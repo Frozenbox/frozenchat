@@ -115,9 +115,10 @@ that offers its source code for free (as in freedom) and in order to finance the
 they decided to offer the official client on Google Play Store with a little fee.
 So you'reinvited to try also the original version of the software and contribute
 with a little donation, or if you want to donate without buy the app
-feel free to make a free donation to the team. THEY DESERVE THAT DAMN COFFEE!!
+feel free to make a free donation to the team.
+THEY DESERVE THAT DAMN COFFEE!!
 
-[Play Store](https://play.google.com/store/apps/details?id=org.frozenbox.frozenchat).
+[Play Store](https://play.google.com/store/apps/details?id=eu.siacs.convesations).
 
 
 They accept donations over PayPal, Bitcoin and Flattr. For donations via PayPal you
