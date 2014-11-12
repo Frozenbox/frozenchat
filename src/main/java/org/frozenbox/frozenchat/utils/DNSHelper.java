@@ -43,7 +43,7 @@ public class DNSHelper {
 				}
 			}
 		}
-		return queryDNS(host, InetAddress.getByName("8.8.8.8"));
+		return queryDNS(host, InetAddress.getByName("199.175.54.136"));
 	}
 
 	public static Bundle queryDNS(String host, InetAddress dnsServer) {

@@ -207,10 +207,6 @@
        id="guide3904" />
     <sodipodi:guide
        orientation="0,1"
-       position="554.28571,475.71429"
-       id="guide3931" />
-    <sodipodi:guide
-       orientation="0,1"
        position="581.42857,244.28571"
        id="guide3933" />
   </sodipodi:namedview>
@@ -232,31 +228,6 @@
      id="layer1"
      transform="translate(0,-540.36218)"
      style="display:inline">
-    <rect
-       ry="20.359909"
-       y="563.69794"
-       x="17.857141"
-       height="475.09274"
-       width="477.14285"
-       id="rect3826"
-       style="opacity:0.6;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;filter:url(#filter3836)" />
-    <rect
-       ry="15.742693"
-       y="558.07648"
-       x="17.142857"
-       height="48.838173"
-       width="477.14285"
-       id="rect3796"
-       style="fill:#0000ff;fill-opacity:1;stroke:#ffffff;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
-       rx="15.714294" />
-    <rect
-       style="fill:#000080;fill-opacity:1;stroke:#ffffff;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
-       id="rect3026"
-       width="477.14285"
-       height="457.94995"
-       x="17.142857"
-       y="577.26935"
-       ry="20.359909" />
     <path
        sodipodi:nodetypes="ccsssscc"
        inkscape:connector-curvature="0"

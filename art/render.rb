@@ -1,4 +1,4 @@
-#!/bin/env ruby
+#!/usr/bin/env ruby
 resolutions={
 	'mdpi'=> 1,
 	'hdpi' => 1.5,

@@ -44,10 +44,10 @@ android {
 	buildToolsVersion "19.1"
 
 	defaultConfig {
-		minSdkVersion 13
-		targetSdkVersion 19
-		versionCode 02
-		versionName "0.2"
+		minSdkVersion 14
+		targetSdkVersion 21
+		versionCode 03
+		versionName "0.3"
 	}
 
 	compileOptions {
