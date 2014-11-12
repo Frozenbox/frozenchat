@@ -101,7 +101,7 @@ run your own XMPP server for you and your friends. These XEP's are:
 #### How do I install FrozenChat?
 
 
-FrozenChat can be downloaded by the main page of our chat services (http://chat.frozenbox.org)
+FrozenChat can be downloaded from the main page of our chat services (http://chat.frozenbox.org)
 
 FrozenChat is entirely open source and licensed under GPLv3. So if you are a
 software developer you can check out the sources from GitHub and use ant to
