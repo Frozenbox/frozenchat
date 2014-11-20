@@ -132,7 +132,7 @@ public class ManageAccountActivity extends XmppActivity implements OnAccountUpda
 
 	@Override
 	public boolean onNavigateUp() {
-		if (xmppConnectionService.getFrozenchat().size() == 0) {
+		if (xmppConnectionService.getConversations().size() == 0) {
 			Intent contactsIntent = new Intent(this,
 					StartConversationActivity.class);
 			contactsIntent.setFlags(

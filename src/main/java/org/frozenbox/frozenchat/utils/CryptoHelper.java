@@ -1,20 +1,14 @@
 package org.frozenbox.frozenchat.utils;
 
-import java.math.BigInteger;
-import java.nio.charset.Charset;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-
-import org.frozenbox.frozenchat.entities.Account;
-import android.util.Base64;
+import java.text.Normalizer;
 
 public class CryptoHelper {
 	public static final String FILETRANSFER = "?FILETRANSFERv1:";
 	final protected static char[] hexArray = "0123456789abcdef".toCharArray();
 	final protected static char[] vowels = "aeiou".toCharArray();
-	final protected static char[] consonants = "bcdfghjklmnpqrstvwxyz"
-			.toCharArray();
+	final protected static char[] consonants = "bcdfghjklmnpqrstvwxyz".toCharArray();
+	final public static byte[] ONE = new byte[] { 0, 0, 0, 1 };
 
 	public static String bytesToHex(byte[] bytes) {
 		char[] hexChars = new char[bytes.length * 2];
@@ -36,62 +30,15 @@ public class CryptoHelper {
 		return array;
 	}
 
-	public static String saslPlain(String username, String password) {
-		String sasl = '\u0000' + username + '\u0000' + password;
-		return Base64.encodeToString(sasl.getBytes(Charset.defaultCharset()),
-				Base64.NO_WRAP);
+	public static String hexToString(final String hexString) {
+		return new String(hexToBytes(hexString));
 	}
 
-	private static byte[] concatenateByteArrays(byte[] a, byte[] b) {
+	public static byte[] concatenateByteArrays(byte[] a, byte[] b) {
 		byte[] result = new byte[a.length + b.length];
 		System.arraycopy(a, 0, result, 0, a.length);
 		System.arraycopy(b, 0, result, a.length, b.length);
 		return result;
-	}
-
-	public static String saslDigestMd5(Account account, String challenge,
-			SecureRandom random) {
-		try {
-			String[] challengeParts = new String(Base64.decode(challenge,
-					Base64.DEFAULT)).split(",");
-			String nonce = "";
-			for (int i = 0; i < challengeParts.length; ++i) {
-				String[] parts = challengeParts[i].split("=");
-				if (parts[0].equals("nonce")) {
-					nonce = parts[1].replace("\"", "");
-				} else if (parts[0].equals("rspauth")) {
-					return null;
-				}
-			}
-			String digestUri = "xmpp/" + account.getServer();
-			String nonceCount = "00000001";
-			String x = account.getUsername() + ":" + account.getServer() + ":"
-					+ account.getPassword();
-			MessageDigest md = MessageDigest.getInstance("MD5");
-			byte[] y = md.digest(x.getBytes(Charset.defaultCharset()));
-			String cNonce = new BigInteger(100, random).toString(32);
-			byte[] a1 = concatenateByteArrays(y,
-					(":" + nonce + ":" + cNonce).getBytes(Charset
-							.defaultCharset()));
-			String a2 = "AUTHENTICATE:" + digestUri;
-			String ha1 = bytesToHex(md.digest(a1));
-			String ha2 = bytesToHex(md.digest(a2.getBytes(Charset
-					.defaultCharset())));
-			String kd = ha1 + ":" + nonce + ":" + nonceCount + ":" + cNonce
-					+ ":auth:" + ha2;
-			String response = bytesToHex(md.digest(kd.getBytes(Charset
-					.defaultCharset())));
-			String saslString = "username=\"" + account.getUsername()
-					+ "\",realm=\"" + account.getServer() + "\",nonce=\""
-					+ nonce + "\",cnonce=\"" + cNonce + "\",nc=" + nonceCount
-					+ ",qop=auth,digest-uri=\"" + digestUri + "\",response="
-					+ response + ",charset=utf-8";
-			return Base64.encodeToString(
-					saslString.getBytes(Charset.defaultCharset()),
-					Base64.NO_WRAP);
-		} catch (NoSuchAlgorithmException e) {
-			return null;
-		}
 	}
 
 	public static String randomMucName(SecureRandom random) {
@@ -107,6 +54,41 @@ public class CryptoHelper {
 				builder.append(vowels[random.nextInt(vowels.length)]);
 			}
 		}
+		return builder.toString();
+	}
+
+	/**
+	 * Escapes usernames or passwords for SASL.
+	 */
+	public static String saslEscape(final String s) {
+		final StringBuilder sb = new StringBuilder((int) (s.length() * 1.1));
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			switch (c) {
+				case ',':
+					sb.append("=2C");
+					break;
+				case '=':
+					sb.append("=3D");
+					break;
+				default:
+					sb.append(c);
+					break;
+			}
+		}
+		return sb.toString();
+	}
+
+	public static String saslPrep(final String s) {
+		return Normalizer.normalize(s, Normalizer.Form.NFKC);
+	}
+
+	public static String prettifyFingerprint(String fingerprint) {
+		StringBuilder builder = new StringBuilder(fingerprint);
+		builder.insert(8, " ");
+		builder.insert(17, " ");
+		builder.insert(26, " ");
+		builder.insert(35, " ");
 		return builder.toString();
 	}
 }

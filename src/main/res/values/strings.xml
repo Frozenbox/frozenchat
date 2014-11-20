@@ -153,7 +153,7 @@
     <string name="mgmt_account_are_you_sure">Are you sure?</string>
     <string name="mgmt_account_delete_confirm_text">If you delete your account your entire conversation history will be lost</string>
     <string name="attach_record_voice">Record voice</string>
-    <string name="account_settings_jabber_id">Jabber ID</string>
+    <string name="account_settings_jabber_id">Jabber ID (username@chat.frozenbox.org)</string>
     <string name="account_settings_password">Password</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">Confirm password</string>
@@ -202,7 +202,7 @@
     <string name="create">Create</string>
     <string name="contact_already_exists">The contact already exists</string>
     <string name="join">Join</string>
-    <string name="conference_address">Conference address</string>
+    <string name="conference_address">Conference address (room@conference.chat.frozenbox.org)</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">Save as bookmark</string>
     <string name="delete_bookmark">Delete bookmark</string>

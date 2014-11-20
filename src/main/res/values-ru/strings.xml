@@ -153,7 +153,7 @@
     <string name="mgmt_account_are_you_sure">Вы уверены?</string>
     <string name="mgmt_account_delete_confirm_text">Если вы удалите свой аккаунт, вся ваша история будет потеряна</string>
     <string name="attach_record_voice">Запись голоса</string>
-    <string name="account_settings_jabber_id">JID (Джаббер ID)</string>
+    <string name="account_settings_jabber_id">JID Джаббер ID  (username@chat.frozenbox.org)</string>
     <string name="account_settings_password">Пароль</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">Подтвердите пароль</string>
@@ -202,7 +202,7 @@
     <string name="create">Создать</string>
     <string name="contact_already_exists">Контакт уже существует</string>
     <string name="join">Присоединиться</string>
-    <string name="conference_address">Адрес конференции</string>
+    <string name="conference_address">Адрес конференции (room@conference.chat.frozenbox.org)</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">Сохранить закладку</string>
     <string name="delete_bookmark">Удалить закладку</string>

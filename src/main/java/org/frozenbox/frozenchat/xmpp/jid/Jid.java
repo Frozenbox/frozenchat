@@ -108,15 +108,16 @@ public final class Jid {
             if (resourcepart.isEmpty() || resourcepart.length() > 1023) {
                 throw new InvalidJidException(InvalidJidException.INVALID_PART_LENGTH);
             }
-            dp = jid.substring(domainpartStart, slashLoc);
+            dp = IDN.toUnicode(jid.substring(domainpartStart, slashLoc), IDN.USE_STD3_ASCII_RULES);
             finaljid = finaljid + dp + "/" + rp;
         } else {
             resourcepart = "";
-            dp = jid.substring(domainpartStart, jid.length());
+            dp = IDN.toUnicode(jid.substring(domainpartStart, jid.length()),
+                    IDN.USE_STD3_ASCII_RULES);
             finaljid = finaljid + dp;
         }
 
-        // Remove trailling "." before storing the domain part.
+        // Remove trailing "." before storing the domain part.
         if (dp.endsWith(".")) {
             try {
                 domainpart = IDN.toASCII(dp.substring(0, dp.length() - 1), IDN.USE_STD3_ASCII_RULES);

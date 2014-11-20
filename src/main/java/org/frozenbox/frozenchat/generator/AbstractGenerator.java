@@ -20,7 +20,7 @@ public abstract class AbstractGenerator {
 			"http://jabber.org/protocol/disco#info",
 			"urn:xmpp:avatar:metadata+notify",
 			"urn:xmpp:ping"};
-	public final String IDENTITY_NAME = "Frozenchat 0.8.3";
+	public final String IDENTITY_NAME = "FrozenChat 0.4";
 	public final String IDENTITY_TYPE = "phone";
 
 	protected XmppConnectionService mXmppConnectionService;

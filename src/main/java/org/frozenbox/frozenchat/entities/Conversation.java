@@ -23,7 +23,7 @@ import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
 public class Conversation extends AbstractEntity {
-	public static final String TABLENAME = "frozenchat";
+	public static final String TABLENAME = "conversations";
 
 	public static final int STATUS_AVAILABLE = 0;
 	public static final int STATUS_ARCHIVED = 1;
@@ -57,18 +57,17 @@ public class Conversation extends AbstractEntity {
 
 	private Jid nextCounterpart;
 
-	protected ArrayList<Message> messages = new ArrayList<>();
+	protected final ArrayList<Message> messages = new ArrayList<>();
 	protected Account account = null;
 
 	private transient SessionImpl otrSession;
 
 	private transient String otrFingerprint = null;
+	private Smp mSmp = new Smp();
 
 	private String nextMessage;
 
 	private transient MucOptions mucOptions = null;
-
-	// private transient String latestMarkableMessageId;
 
 	private byte[] symmetricKey;
 
@@ -120,7 +119,7 @@ public class Conversation extends AbstractEntity {
 		}
 	}
 
-	public String getLatestMarkableMessageId() {
+	public Message getLatestMarkableMessage() {
 		if (this.messages == null) {
 			return null;
 		}
@@ -130,7 +129,7 @@ public class Conversation extends AbstractEntity {
 				if (this.messages.get(i).isRead()) {
 					return null;
 				} else {
-					return this.messages.get(i).getRemoteMsgId();
+					return this.messages.get(i);
 				}
 			}
 		}
@@ -149,16 +148,20 @@ public class Conversation extends AbstractEntity {
 		}
 	}
 
-	public void setMessages(ArrayList<Message> msgs) {
-		this.messages = msgs;
-	}
-
 	public String getName() {
-		if (getMode() == MODE_MULTI && getMucOptions().getSubject() != null) {
-			return getMucOptions().getSubject();
-		} else if (getMode() == MODE_MULTI && bookmark != null
-				&& bookmark.getName() != null) {
-			return bookmark.getName();
+		if (getMode() == MODE_MULTI) {
+			if (getMucOptions().getSubject() != null) {
+				return getMucOptions().getSubject();
+			} else if (bookmark != null && bookmark.getName() != null) {
+				return bookmark.getName();
+			} else {
+				String generatedName = getMucOptions().createNameFromParticipants();
+				if (generatedName != null) {
+					return generatedName;
+				} else {
+					return getContactJid().getLocalpart();
+				}
+			}
 		} else {
 			return this.getContact().getDisplayName();
 		}
@@ -241,16 +244,14 @@ public class Conversation extends AbstractEntity {
 		this.mode = mode;
 	}
 
-	public SessionImpl startOtrSession(XmppConnectionService service,
-			String presence, boolean sendStart) {
+	public SessionImpl startOtrSession(String presence, boolean sendStart) {
 		if (this.otrSession != null) {
 			return this.otrSession;
 		} else {
             final SessionID sessionId = new SessionID(this.getContactJid().toBareJid().toString(),
                     presence,
                     "xmpp");
-			this.otrSession = new SessionImpl(sessionId, getAccount()
-					.getOtrEngine(service));
+			this.otrSession = new SessionImpl(sessionId, getAccount().getOtrEngine());
 			try {
 				if (sendStart) {
 					this.otrSession.startSession();
@@ -271,6 +272,13 @@ public class Conversation extends AbstractEntity {
 	public void resetOtrSession() {
 		this.otrFingerprint = null;
 		this.otrSession = null;
+		this.mSmp.hint = null;
+		this.mSmp.secret = null;
+		this.mSmp.status = Smp.STATUS_NONE;
+	}
+
+	public Smp smp() {
+		return mSmp;
 	}
 
 	public void startOtrIfNeeded() {
@@ -328,6 +336,14 @@ public class Conversation extends AbstractEntity {
 			}
 		}
 		return this.otrFingerprint;
+	}
+
+	public void verifyOtrFingerprint() {
+		getContact().addOtrFingerprint(getOtrFingerprint());
+	}
+
+	public boolean isOtrFingerprintVerified() {
+		return getContact().getOtrFingerprints().contains(getOtrFingerprint());
 	}
 
 	public synchronized MucOptions getMucOptions() {
@@ -401,6 +417,10 @@ public class Conversation extends AbstractEntity {
 		} else {
 			return this.nextMessage;
 		}
+	}
+
+	public boolean smpRequested() {
+		return smp().status == Smp.STATUS_CONTACT_REQUESTED;
 	}
 
 	public void setNextMessage(String message) {
@@ -502,5 +522,17 @@ public class Conversation extends AbstractEntity {
 		synchronized (this.messages) {
 			this.messages.addAll(index, messages);
 		}
+	}
+
+	public class Smp {
+		public static final int STATUS_NONE = 0;
+		public static final int STATUS_CONTACT_REQUESTED = 1;
+		public static final int STATUS_WE_REQUESTED = 2;
+		public static final int STATUS_FAILED = 3;
+		public static final int STATUS_VERIFIED = 4;
+
+		public String secret = null;
+		public String hint = null;
+		public int status = 0;
 	}
 }

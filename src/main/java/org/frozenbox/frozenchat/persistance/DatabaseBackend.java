@@ -22,7 +22,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 	private static DatabaseBackend instance = null;
 
 	private static final String DATABASE_NAME = "history";
-	private static final int DATABASE_VERSION = 9;
+	private static final int DATABASE_VERSION = 11;
 
 	private static String CREATE_CONTATCS_STATEMENT = "create table "
 			+ Contact.TABLENAME + "(" + Contact.ACCOUNT + " TEXT, "
@@ -31,7 +31,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 			+ Contact.PHOTOURI + " TEXT," + Contact.OPTIONS + " NUMBER,"
 			+ Contact.SYSTEMACCOUNT + " NUMBER, " + Contact.AVATAR + " TEXT, "
             + Contact.LAST_PRESENCE + " TEXT, " + Contact.LAST_TIME + " NUMBER, "
-			+ "FOREIGN KEY(" + Contact.ACCOUNT + ") REFERENCES "
+			+ Contact.GROUPS + " TEXT, FOREIGN KEY(" + Contact.ACCOUNT + ") REFERENCES "
 			+ Account.TABLENAME + "(" + Account.UUID
 			+ ") ON DELETE CASCADE, UNIQUE(" + Contact.ACCOUNT + ", "
 			+ Contact.JID + ") ON CONFLICT REPLACE);";
@@ -64,6 +64,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 				+ " TEXT, " + Message.TRUE_COUNTERPART + " TEXT,"
 				+ Message.BODY + " TEXT, " + Message.ENCRYPTION + " NUMBER, "
 				+ Message.STATUS + " NUMBER," + Message.TYPE + " NUMBER, "
+				+ Message.RELATIVE_FILE_PATH + " TEXT, "
 				+ Message.REMOTE_MSG_ID + " TEXT, FOREIGN KEY("
 				+ Message.CONVERSATION + ") REFERENCES "
 				+ Conversation.TABLENAME + "(" + Conversation.UUID
@@ -110,6 +111,16 @@ public class DatabaseBackend extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + Contact.TABLENAME + " ADD COLUMN "
                     + Contact.LAST_PRESENCE + " TEXT");
         }
+		if (oldVersion < 10 && newVersion >= 10) {
+			db.execSQL("ALTER TABLE " + Message.TABLENAME + " ADD COLUMN "
+					+ Message.RELATIVE_FILE_PATH + " TEXT");
+		}
+		if (oldVersion < 11 && newVersion >= 11) {
+			db.execSQL("ALTER TABLE " + Contact.TABLENAME + " ADD COLUMN "
+					+ Contact.GROUPS + " TEXT");
+			db.execSQL("delete from "+Contact.TABLENAME);
+			db.execSQL("update "+Account.TABLENAME+" set "+Account.ROSTERVERSION+" = NULL");
+		}
 	}
 
 	public static synchronized DatabaseBackend getInstance(Context context) {
@@ -145,10 +156,12 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 				+ Conversation.TABLENAME + " where " + Conversation.STATUS
 				+ "=" + Conversation.STATUS_AVAILABLE, null);
 		cursor.moveToFirst();
-		return cursor.getInt(0);
+		int count = cursor.getInt(0);
+		cursor.close();
+		return count;
 	}
 
-	public CopyOnWriteArrayList<Conversation> getFrozenchat(int status) {
+	public CopyOnWriteArrayList<Conversation> getConversations(int status) {
 		CopyOnWriteArrayList<Conversation> list = new CopyOnWriteArrayList<>();
 		SQLiteDatabase db = this.getReadableDatabase();
 		String[] selectionArgs = { Integer.toString(status) };
@@ -158,11 +171,12 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 		while (cursor.moveToNext()) {
 			list.add(Conversation.fromCursor(cursor));
 		}
+		cursor.close();
 		return list;
 	}
 
-	public ArrayList<Message> getMessages(Conversation frozenchat, int limit) {
-		return getMessages(frozenchat, limit, -1);
+	public ArrayList<Message> getMessages(Conversation conversations, int limit) {
+		return getMessages(conversations, limit, -1);
 	}
 
 	public ArrayList<Message> getMessages(Conversation conversation, int limit,
@@ -191,6 +205,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 				list.add(message);
 			} while (cursor.moveToPrevious());
 		}
+		cursor.close();
 		return list;
 	}
 
@@ -203,7 +218,9 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 		if (cursor.getCount() == 0)
 			return null;
 		cursor.moveToFirst();
-		return Conversation.fromCursor(cursor);
+		Conversation conversation = Conversation.fromCursor(cursor);
+		cursor.close();
+		return conversation;
 	}
 
 	public void updateConversation(Conversation conversation) {
@@ -315,7 +332,9 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 			return null;
 		}
 		cursor.moveToFirst();
-		return Conversation.fromCursor(cursor);
+		Conversation conversation = Conversation.fromCursor(cursor);
+		cursor.close();
+		return conversation;
 	}
 
 	public Message findMessageByUuid(String messageUuid) {
@@ -327,7 +346,9 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 			return null;
 		}
 		cursor.moveToFirst();
-		return Message.fromCursor(cursor);
+		Message message = Message.fromCursor(cursor);
+		cursor.close();
+		return message;
 	}
 
 	public Account findAccountByUuid(String accountUuid) {
@@ -339,7 +360,9 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 			return null;
 		}
 		cursor.moveToFirst();
-		return Account.fromCursor(cursor);
+		Account account = Account.fromCursor(cursor);
+		cursor.close();
+		return account;
 	}
 
 	public List<Message> getImageMessages(Conversation conversation) {
@@ -357,6 +380,7 @@ public class DatabaseBackend extends SQLiteOpenHelper {
 				list.add(message);
 			} while (cursor.moveToPrevious());
 		}
+		cursor.close();
 		return list;
 	}
 }

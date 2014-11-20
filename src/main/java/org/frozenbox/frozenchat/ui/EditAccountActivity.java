@@ -26,6 +26,7 @@ import org.frozenbox.frozenchat.R;
 import org.frozenbox.frozenchat.entities.Account;
 import org.frozenbox.frozenchat.services.XmppConnectionService.OnAccountUpdate;
 import org.frozenbox.frozenchat.ui.adapter.KnownHostsAdapter;
+import org.frozenbox.frozenchat.utils.CryptoHelper;
 import org.frozenbox.frozenchat.utils.UIHelper;
 import org.frozenbox.frozenchat.utils.Validator;
 import org.frozenbox.frozenchat.xmpp.XmppConnection.Features;
@@ -62,7 +63,7 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 		@Override
 		public void onClick(View v) {
 			if (mAccount != null
-					&& mAccount.getStatus() == Account.STATUS_DISABLED) {
+					&& mAccount.getStatus() == Account.State.DISABLED) {
 				mAccount.setOption(Account.OPTION_DISABLED, false);
 				xmppConnectionService.updateAccount(mAccount);
 				return;
@@ -139,13 +140,13 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 				@Override
 				public void run() {
 					if (mAccount != null
-							&& mAccount.getStatus() != Account.STATUS_ONLINE
+							&& mAccount.getStatus() != Account.State.ONLINE
 							&& mFetchingAvatar) {
 						startActivity(new Intent(getApplicationContext(),
 								ManageAccountActivity.class));
 						finish();
 					} else if (jidToEdit == null && mAccount != null
-							&& mAccount.getStatus() == Account.STATUS_ONLINE) {
+							&& mAccount.getStatus() == Account.State.ONLINE) {
 						if (!mFetchingAvatar) {
 							mFetchingAvatar = true;
 							xmppConnectionService.checkForAvatar(mAccount,
@@ -231,12 +232,12 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 
 	protected void updateSaveButton() {
 		if (mAccount != null
-				&& mAccount.getStatus() == Account.STATUS_CONNECTING) {
+				&& mAccount.getStatus() == Account.State.CONNECTING) {
 			this.mSaveButton.setEnabled(false);
 			this.mSaveButton.setTextColor(getSecondaryTextColor());
 			this.mSaveButton.setText(R.string.account_status_connecting);
 		} else if (mAccount != null
-				&& mAccount.getStatus() == Account.STATUS_DISABLED) {
+				&& mAccount.getStatus() == Account.State.DISABLED) {
 			this.mSaveButton.setEnabled(true);
 			this.mSaveButton.setTextColor(getPrimaryTextColor());
 			this.mSaveButton.setText(R.string.enable);
@@ -245,7 +246,7 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 			this.mSaveButton.setTextColor(getPrimaryTextColor());
 			if (jidToEdit != null) {
 				if (mAccount != null
-						&& mAccount.getStatus() == Account.STATUS_ONLINE) {
+						&& mAccount.getStatus() == Account.State.ONLINE) {
 					this.mSaveButton.setText(R.string.save);
 					if (!accountInfoEdited()) {
 						this.mSaveButton.setEnabled(false);
@@ -270,7 +271,7 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 	@Override
 	protected String getShareableUri() {
 		if (mAccount!=null) {
-			return "xmpp:"+mAccount.getJid().toBareJid();
+			return mAccount.getShareableUri();
 		} else {
 			return "";
 		}
@@ -379,10 +380,10 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 			this.mRegisterNew.setVisibility(View.GONE);
 			this.mRegisterNew.setChecked(false);
 		}
-		if (this.mAccount.getStatus() == Account.STATUS_ONLINE
+		if (this.mAccount.getStatus() == Account.State.ONLINE
 				&& !this.mFetchingAvatar) {
 			this.mStats.setVisibility(View.VISIBLE);
-			this.mSessionEst.setText(UIHelper.readableTimeDifference(
+			this.mSessionEst.setText(UIHelper.readableTimeDifferenceFull(
 					getApplicationContext(), this.mAccount.getXmppConnection()
 							.getLastSessionEstablished()));
 			Features features = this.mAccount.getXmppConnection().getFeatures();
@@ -402,11 +403,10 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 			} else {
 				this.mServerInfoPep.setText(R.string.server_info_unavailable);
 			}
-			final String fingerprint = this.mAccount
-					.getOtrFingerprint(xmppConnectionService);
+			final String fingerprint = this.mAccount.getOtrFingerprint();
 			if (fingerprint != null) {
 				this.mOtrFingerprintBox.setVisibility(View.VISIBLE);
-				this.mOtrFingerprint.setText(fingerprint);
+				this.mOtrFingerprint.setText(CryptoHelper.prettifyFingerprint(fingerprint));
 				this.mOtrFingerprintToClipboardButton
 						.setVisibility(View.VISIBLE);
 				this.mOtrFingerprintToClipboardButton
@@ -428,8 +428,7 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 			}
 		} else {
 			if (this.mAccount.errorStatus()) {
-				this.mAccountJid.setError(getString(this.mAccount
-						.getReadableStatusId()));
+				this.mAccountJid.setError(getString(this.mAccount.getStatus().getReadableId()));
 				this.mAccountJid.requestFocus();
 			}
 			this.mStats.setVisibility(View.GONE);

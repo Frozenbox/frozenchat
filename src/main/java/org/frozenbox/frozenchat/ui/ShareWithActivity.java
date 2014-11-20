@@ -38,7 +38,7 @@ public class ShareWithActivity extends XmppActivity {
 
 	private static final int REQUEST_START_NEW_CONVERSATION = 0x0501;
 	private ListView mListView;
-	private List<Conversation> mFrozenchat = new ArrayList<Conversation>();
+	private List<Conversation> mConversations = new ArrayList<Conversation>();
 
 	private UiCallback<Message> attachImageCallback = new UiCallback<Message>() {
 
@@ -89,17 +89,17 @@ public class ShareWithActivity extends XmppActivity {
 
 		mListView = (ListView) findViewById(R.id.choose_conversation_list);
 		ConversationAdapter mAdapter = new ConversationAdapter(this,
-				this.mFrozenchat);
+				this.mConversations);
 		mListView.setAdapter(mAdapter);
 		mListView.setOnItemClickListener(new OnItemClickListener() {
 
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View arg1,
 					int position, long arg3) {
-				Conversation conversation = mFrozenchat.get(position);
+				Conversation conversation = mConversations.get(position);
 				if (conversation.getMode() == Conversation.MODE_SINGLE
 						|| share.uri == null) {
-					share(mFrozenchat.get(position));
+					share(mConversations.get(position));
 				}
 			}
 		});
@@ -135,8 +135,8 @@ public class ShareWithActivity extends XmppActivity {
 			this.share.text = getIntent().getStringExtra(Intent.EXTRA_TEXT);
 		}
 		if (xmppConnectionServiceBound) {
-			xmppConnectionService.populateWithOrderedFrozenchat(
-					mFrozenchat, this.share.uri == null);
+			xmppConnectionService.populateWithOrderedConversations(
+					mConversations, this.share.uri == null);
 		}
 		super.onStart();
 	}
@@ -148,7 +148,7 @@ public class ShareWithActivity extends XmppActivity {
 			share();
 			return;
 		}
-		xmppConnectionService.populateWithOrderedFrozenchat(mFrozenchat,
+		xmppConnectionService.populateWithOrderedConversations(mConversations,
 				this.share != null && this.share.uri == null);
 	}
 

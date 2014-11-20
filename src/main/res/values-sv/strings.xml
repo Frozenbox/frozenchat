@@ -144,7 +144,7 @@
     <string name="mgmt_account_are_you_sure">Är du säker?</string>
     <string name="mgmt_account_delete_confirm_text">Om du tar bort kontot kommer all konversationshistorik att försvinna</string>
     <string name="attach_record_voice">Spela in röst</string>
-    <string name="account_settings_jabber_id">Jabber ID</string>
+    <string name="account_settings_jabber_id">Jabber ID  (username@chat.frozenbox.org)</string>
     <string name="account_settings_password">Lösenord</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">Bekräfta lösenord</string>
@@ -190,7 +190,7 @@
     <string name="create">Skapa</string>
     <string name="contact_already_exists">Kontakten finns redan</string>
     <string name="join">Gå med</string>
-    <string name="conference_address">Konferensadress</string>
+    <string name="conference_address">Konferensadress (room@conference.chat.frozenbox.org)</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">Spara som bokmärke</string>
     <string name="delete_bookmark">Ta bort bokmärke</string>

@@ -151,7 +151,7 @@
     <string name="mgmt_account_are_you_sure">你確定嗎？</string>
     <string name="mgmt_account_delete_confirm_text">如果刪除帳戶，則所有對話訊息將會被刪除</string>
     <string name="attach_record_voice">錄音</string>
-    <string name="account_settings_jabber_id">Jabber ID</string>
+    <string name="account_settings_jabber_id">Jabber ID  (username@chat.frozenbox.org)</string>
     <string name="account_settings_password">密碼</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">確認密碼</string>
@@ -200,7 +200,7 @@
     <string name="create">新增</string>
     <string name="contact_already_exists">聯絡人已存在</string>
     <string name="join">加入</string>
-    <string name="conference_address">群組地址</string>
+    <string name="conference_address">群組地址 (room@conference.chat.frozenbox.org)</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">儲存為書籤</string>
     <string name="delete_bookmark">刪除書籤</string>

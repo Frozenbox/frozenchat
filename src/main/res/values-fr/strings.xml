@@ -153,7 +153,7 @@
     <string name="mgmt_account_are_you_sure">Êtes-vous sûr?</string>
     <string name="mgmt_account_delete_confirm_text">En supprimant votre compte, votre historique de frozenchat sera perdu!</string>
     <string name="attach_record_voice">Enregistrer un son</string>
-    <string name="account_settings_jabber_id">Identifiant</string>
+    <string name="account_settings_jabber_id">Identifiant (username@chat.frozenbox.org)</string>
     <string name="account_settings_password">Mot de passe</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">Confirmer le mot de passe</string>
@@ -202,7 +202,7 @@
     <string name="create">Ajouter</string>
     <string name="contact_already_exists">Le contact existe déjà.</string>
     <string name="join">Rejoindre</string>
-    <string name="conference_address">Adresse de la conférence</string>
+    <string name="conference_address">Adresse de la conférence (room@conference.chat.frozenbox.org)</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">Enregistrer en favoris</string>
     <string name="delete_bookmark">Supprimer le favoris</string>

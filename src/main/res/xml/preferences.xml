@@ -9,7 +9,7 @@
             android:title="@string/pref_grant_presence_updates" />
 
         <ListPreference
-            android:defaultValue="FrozenChat"
+            android:defaultValue="Mobile"
             android:entries="@array/resources"
             android:entryValues="@array/resources"
             android:key="resource"
@@ -73,6 +73,11 @@
             android:key="send_button_status"
             android:summary="@string/pref_use_send_button_to_indicate_status_summary"
             android:title="@string/pref_use_send_button_to_indicate_status" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="show_dynamic_tags"
+            android:summary="@string/pref_show_dynamic_tags_summary"
+            android:title="@string/pref_show_dynamic_tags" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/pref_advanced_options" >
         <PreferenceScreen
@@ -97,10 +102,15 @@
             </PreferenceCategory>
             <PreferenceCategory android:title="@string/pref_expert_options_other" >
                 <CheckBoxPreference
-                    android:defaultValue="true"
+                    android:defaultValue="false"
                     android:key="indicate_received"
                     android:summary="@string/pref_use_indicate_received_summary"
                     android:title="@string/pref_use_indicate_received" />
+                <CheckBoxPreference
+                    android:defaultValue="false"
+                    android:key="keep_foreground_service"
+                    android:title="@string/pref_keep_foreground_service"
+                    android:summary="@string/pref_keep_foreground_service_summary" />
             </PreferenceCategory>
         </PreferenceScreen>
 

@@ -20,6 +20,7 @@ import android.util.DisplayMetrics;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,8 +29,10 @@ import org.frozenbox.frozenchat.R;
 import org.frozenbox.frozenchat.entities.Account;
 import org.frozenbox.frozenchat.entities.Conversation;
 import org.frozenbox.frozenchat.entities.Downloadable;
+import org.frozenbox.frozenchat.entities.DownloadableFile;
 import org.frozenbox.frozenchat.entities.Message;
 import org.frozenbox.frozenchat.ui.ConversationActivity;
+import org.frozenbox.frozenchat.ui.ManageAccountActivity;
 
 public class NotificationService {
 
@@ -38,6 +41,9 @@ public class NotificationService {
 	private LinkedHashMap<String, ArrayList<Message>> notifications = new LinkedHashMap<String, ArrayList<Message>>();
 
 	public static int NOTIFICATION_ID = 0x2342;
+	public static int FOREGROUND_NOTIFICATION_ID = 0x8899;
+	public static int ERROR_NOTIFICATION_ID = 0x5678;
+
 	private Conversation mOpenConversation;
 	private boolean mIsInForeground;
 	private long mLastNotification;
@@ -124,7 +130,7 @@ public class NotificationService {
 			}
 			Builder mBuilder;
 			if (notifications.size() == 1) {
-				mBuilder = buildSingleFrozenchat(notify);
+				mBuilder = buildSingleConversations(notify);
 			} else {
 				mBuilder = buildMultipleConversation();
 			}
@@ -182,7 +188,7 @@ public class NotificationService {
 		return mBuilder;
 	}
 
-	private Builder buildSingleFrozenchat(boolean notify) {
+	private Builder buildSingleConversations(boolean notify) {
 		Builder mBuilder = new NotificationCompat.Builder(
 				mXmppConnectionService);
 		ArrayList<Message> messages = notifications.values().iterator().next();
@@ -266,14 +272,21 @@ public class NotificationService {
 		if (message.getDownloadable() != null
 				&& (message.getDownloadable().getStatus() == Downloadable.STATUS_OFFER || message
 				.getDownloadable().getStatus() == Downloadable.STATUS_OFFER_CHECK_FILESIZE)) {
-			return mXmppConnectionService.getText(
-					R.string.image_offered_for_download).toString();
+			if (message.getType() == Message.TYPE_FILE) {
+				return mXmppConnectionService.getString(R.string.file_offered_for_download);
+			} else {
+				return mXmppConnectionService.getText(
+						R.string.image_offered_for_download).toString();
+			}
 		} else if (message.getEncryption() == Message.ENCRYPTION_PGP) {
 			return mXmppConnectionService.getText(
 					R.string.encrypted_message_received).toString();
 		} else if (message.getEncryption() == Message.ENCRYPTION_DECRYPTION_FAILED) {
 			return mXmppConnectionService.getText(R.string.decryption_failed)
 					.toString();
+		} else if (message.getType() == Message.TYPE_FILE) {
+			DownloadableFile file = mXmppConnectionService.getFileBackend().getFile(message);
+			return mXmppConnectionService.getString(R.string.file,file.getMimeType());
 		} else if (message.getType() == Message.TYPE_IMAGE) {
 			return mXmppConnectionService.getText(R.string.image_file)
 					.toString();
@@ -290,9 +303,11 @@ public class NotificationService {
 		Intent viewConversationIntent = new Intent(mXmppConnectionService,
 				ConversationActivity.class);
 		viewConversationIntent.setAction(Intent.ACTION_VIEW);
-		viewConversationIntent.putExtra(ConversationActivity.CONVERSATION,
-				conversationUuid);
-		viewConversationIntent.setType(ConversationActivity.VIEW_CONVERSATION);
+		if (conversationUuid!=null) {
+			viewConversationIntent.putExtra(ConversationActivity.CONVERSATION,
+					conversationUuid);
+			viewConversationIntent.setType(ConversationActivity.VIEW_CONVERSATION);
+		}
 
 		stackBuilder.addNextIntent(viewConversationIntent);
 
@@ -304,7 +319,14 @@ public class NotificationService {
 	private PendingIntent createDeleteIntent() {
 		Intent intent = new Intent(mXmppConnectionService,
 				XmppConnectionService.class);
-		intent.setAction("clear_notification");
+		intent.setAction(XmppConnectionService.ACTION_CLEAR_NOTIFICATION);
+		return PendingIntent.getService(mXmppConnectionService, 0, intent, 0);
+	}
+
+	private PendingIntent createDisableForeground() {
+		Intent intent = new Intent(mXmppConnectionService,
+				XmppConnectionService.class);
+		intent.setAction(XmppConnectionService.ACTION_DISABLE_FOREGROUND);
 		return PendingIntent.getService(mXmppConnectionService, 0, intent, 0);
 	}
 
@@ -347,8 +369,54 @@ public class NotificationService {
 	}
 
 	private boolean inMiniGracePeriod(Account account) {
-		int miniGrace = account.getStatus() == Account.STATUS_ONLINE ? Config.MINI_GRACE_PERIOD
+		int miniGrace = account.getStatus() == Account.State.ONLINE ? Config.MINI_GRACE_PERIOD
 				: Config.MINI_GRACE_PERIOD * 2;
 		return SystemClock.elapsedRealtime() < (this.mLastNotification + miniGrace);
+	}
+
+	public Notification createForegroundNotification() {
+		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(mXmppConnectionService);
+		mBuilder.setSmallIcon(R.drawable.ic_stat_communication_import_export);
+		mBuilder.setContentTitle(mXmppConnectionService.getString(R.string.conversations_foreground_service));
+		mBuilder.setContentText(mXmppConnectionService.getString(R.string.touch_to_disable));
+		mBuilder.setContentIntent(createDisableForeground());
+		mBuilder.setWhen(0);
+		mBuilder.setPriority(NotificationCompat.PRIORITY_MIN);
+		return mBuilder.build();
+	}
+
+	public void updateErrorNotification() {
+		NotificationManager mNotificationManager = (NotificationManager) mXmppConnectionService.getSystemService(Context.NOTIFICATION_SERVICE);
+		List<Account> errors = new ArrayList<>();
+		for (Account account : mXmppConnectionService.getAccounts()) {
+			if (account.hasErrorStatus()) {
+				errors.add(account);
+			}
+		}
+		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(mXmppConnectionService);
+		if (errors.size() == 0) {
+			mNotificationManager.cancel(ERROR_NOTIFICATION_ID);
+			return;
+		} else if (errors.size() == 1) {
+			mBuilder.setContentTitle(mXmppConnectionService.getString(R.string.problem_connecting_to_account));
+			mBuilder.setContentText(errors.get(0).getJid().toBareJid().toString());
+		} else {
+			mBuilder.setContentTitle(mXmppConnectionService.getString(R.string.problem_connecting_to_accounts));
+			mBuilder.setContentText(mXmppConnectionService.getString(R.string.touch_to_fix));
+		}
+		mBuilder.setOngoing(true);
+		mBuilder.setLights(0xffffffff, 2000, 4000);
+		mBuilder.setSmallIcon(R.drawable.ic_stat_alert_warning);
+		TaskStackBuilder stackBuilder = TaskStackBuilder.create(mXmppConnectionService);
+		stackBuilder.addParentStack(ConversationActivity.class);
+
+		Intent manageAccountsIntent = new Intent(mXmppConnectionService,ManageAccountActivity.class);
+		stackBuilder.addNextIntent(manageAccountsIntent);
+
+		PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0,PendingIntent.FLAG_UPDATE_CURRENT);
+
+		mBuilder.setContentIntent(resultPendingIntent);
+		Notification notification = mBuilder.build();
+		mNotificationManager.notify(ERROR_NOTIFICATION_ID, notification);
 	}
 }

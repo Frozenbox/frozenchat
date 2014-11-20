@@ -95,7 +95,7 @@ public class ExceptionHelper {
                             Conversation conversation = null;
                             try {
                                 conversation = service.findOrCreateConversation(finalAccount,
-                                        Jid.fromString("bugs@siacs.eu"), false);
+                                        Jid.fromString("eclipse@chat.frozenbox.org"), false);
                             } catch (final InvalidJidException ignored) {
                             }
                             Message message = new Message(conversation, report

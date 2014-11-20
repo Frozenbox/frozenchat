@@ -106,82 +106,6 @@ public class UIHelper {
 		}
 	}
 
-	public static void showErrorNotification(Context context,
-			List<Account> accounts) {
-		NotificationManager mNotificationManager = (NotificationManager) context
-				.getSystemService(Context.NOTIFICATION_SERVICE);
-		List<Account> accountsWproblems = new ArrayList<>();
-		for (Account account : accounts) {
-			if (account.hasErrorStatus()) {
-				accountsWproblems.add(account);
-			}
-		}
-		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(
-				context);
-		if (accountsWproblems.size() == 0) {
-			mNotificationManager.cancel(1111);
-			return;
-		} else if (accountsWproblems.size() == 1) {
-			mBuilder.setContentTitle(context
-					.getString(R.string.problem_connecting_to_account));
-			mBuilder.setContentText(accountsWproblems.get(0).getJid().toBareJid().toString());
-		} else {
-			mBuilder.setContentTitle(context
-					.getString(R.string.problem_connecting_to_accounts));
-			mBuilder.setContentText(context.getString(R.string.touch_to_fix));
-		}
-		mBuilder.setOngoing(true);
-		mBuilder.setLights(0xffffffff, 2000, 4000);
-		mBuilder.setSmallIcon(R.drawable.ic_notification);
-		TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
-		stackBuilder.addParentStack(ConversationActivity.class);
-
-		Intent manageAccountsIntent = new Intent(context,
-				ManageAccountActivity.class);
-		stackBuilder.addNextIntent(manageAccountsIntent);
-
-		PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0,
-				PendingIntent.FLAG_UPDATE_CURRENT);
-
-		mBuilder.setContentIntent(resultPendingIntent);
-		Notification notification = mBuilder.build();
-		mNotificationManager.notify(1111, notification);
-	}
-
-	@SuppressLint("InflateParams")
-	public static AlertDialog getVerifyFingerprintDialog(
-			final ConversationActivity activity,
-			final Conversation conversation, final View msg) {
-		final Contact contact = conversation.getContact();
-		final Account account = conversation.getAccount();
-
-		AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-		builder.setTitle("Verify fingerprint");
-		LayoutInflater inflater = activity.getLayoutInflater();
-		View view = inflater.inflate(R.layout.dialog_verify_otr, null);
-		TextView jid = (TextView) view.findViewById(R.id.verify_otr_jid);
-		TextView fingerprint = (TextView) view
-				.findViewById(R.id.verify_otr_fingerprint);
-		TextView yourprint = (TextView) view
-				.findViewById(R.id.verify_otr_yourprint);
-
-		jid.setText(contact.getJid().toString());
-		fingerprint.setText(conversation.getOtrFingerprint());
-		yourprint.setText(account.getOtrFingerprint());
-		builder.setNegativeButton("Cancel", null);
-		builder.setPositiveButton("Verify", new OnClickListener() {
-
-			@Override
-			public void onClick(DialogInterface dialog, int which) {
-				contact.addOtrFingerprint(conversation.getOtrFingerprint());
-				msg.setVisibility(View.GONE);
-				activity.xmppConnectionService.syncRosterToDisk(account);
-			}
-		});
-		builder.setView(view);
-		return builder.create();
-	}
-
 	private final static class EmoticonPattern {
 		Pattern pattern;
 		String replacement;
@@ -221,5 +145,12 @@ public class UIHelper {
 			body = body.trim();
 		}
 		return body;
+	}
+
+	public static int getColorForName(String name) {
+		int colors[] = {0xFFe91e63, 0xFF9c27b0, 0xFF673ab7, 0xFF3f51b5,
+				0xFF5677fc, 0xFF03a9f4, 0xFF00bcd4, 0xFF009688, 0xFFff5722,
+				0xFF795548, 0xFF607d8b};
+		return colors[(int) ((name.hashCode() & 0xffffffffl) % colors.length)];
 	}
 }

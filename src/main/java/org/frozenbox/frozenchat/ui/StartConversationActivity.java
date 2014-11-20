@@ -45,8 +45,6 @@ import android.widget.Spinner;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -59,6 +57,7 @@ import org.frozenbox.frozenchat.entities.Bookmark;
 import org.frozenbox.frozenchat.entities.Contact;
 import org.frozenbox.frozenchat.entities.Conversation;
 import org.frozenbox.frozenchat.entities.ListItem;
+import org.frozenbox.frozenchat.utils.XmppUri;
 import org.frozenbox.frozenchat.services.XmppConnectionService.OnRosterUpdate;
 import org.frozenbox.frozenchat.ui.adapter.KnownHostsAdapter;
 import org.frozenbox.frozenchat.ui.adapter.ListItemAdapter;
@@ -316,7 +315,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 	}
 
 	@SuppressLint("InflateParams")
-	protected void showCreateContactDialog(String prefilledJid) {
+	protected void showCreateContactDialog(final String prefilledJid, final String fingerprint) {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setTitle(R.string.create_contact);
 		View dialogView = getLayoutInflater().inflate(
@@ -328,6 +327,12 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 				android.R.layout.simple_list_item_1, mKnownHosts));
 		if (prefilledJid != null) {
 			jid.append(prefilledJid);
+			if (fingerprint!=null) {
+				jid.setFocusable(false);
+				jid.setFocusableInTouchMode(false);
+				jid.setClickable(false);
+				jid.setCursorVisible(false);
+			}
 		}
 		populateAccountSpinner(spinner);
 		builder.setView(dialogView);
@@ -367,6 +372,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 							if (contact.showInRoster()) {
 								jid.setError(getString(R.string.contact_already_exists));
 							} else {
+								contact.addOtrFingerprint(fingerprint);
 								xmppConnectionService.createContact(contact);
 								dialog.dismiss();
 								switchToConversation(contact);
@@ -511,7 +517,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 			case R.id.action_create_contact:
-				showCreateContactDialog(null);
+				showCreateContactDialog(null,null);
 				return true;
 			case R.id.action_join_conference:
 				showJoinConferenceDialog(null);
@@ -541,7 +547,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 				Invite invite = new Invite(data);
 				if (xmppConnectionServiceBound) {
 					invite.invite();
-				} else if (invite.jid != null) {
+				} else if (invite.getJid() != null) {
 					this.mPendingInvite = invite;
 				} else {
 					this.mPendingInvite = null;
@@ -555,7 +561,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 	protected void onBackendConnected() {
 		this.mActivatedAccounts.clear();
 		for (Account account : xmppConnectionService.getAccounts()) {
-			if (account.getStatus() != Account.STATUS_DISABLED) {
+			if (account.getStatus() != Account.State.DISABLED) {
 				this.mActivatedAccounts.add(account.getJid().toBareJid().toString());
 			}
 		}
@@ -615,22 +621,29 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		return false;
 	}
 
-	private boolean handleJid(String jid) {
-		List<Contact> contacts = xmppConnectionService.findContacts(jid);
+	private boolean handleJid(Invite invite) {
+		List<Contact> contacts = xmppConnectionService.findContacts(invite.getJid());
 		if (contacts.size() == 0) {
-			showCreateContactDialog(jid);
+			showCreateContactDialog(invite.getJid().toString(),invite.getFingerprint());
 			return false;
 		} else if (contacts.size() == 1) {
-			switchToConversation(contacts.get(0));
+			Contact contact = contacts.get(0);
+			if (invite.getFingerprint() != null) {
+				if (contact.addOtrFingerprint(invite.getFingerprint())) {
+					Log.d(Config.LOGTAG,"added new fingerprint");
+					xmppConnectionService.syncRosterToDisk(contact.getAccount());
+				}
+			}
+			switchToConversation(contact);
 			return true;
 		} else {
 			if (mMenuSearchView != null) {
 				mMenuSearchView.expandActionView();
 				mSearchEditText.setText("");
-				mSearchEditText.append(jid);
-				filter(jid);
+				mSearchEditText.append(invite.getJid().toString());
+				filter(invite.getJid().toString());
 			} else {
-				mInitialJid = jid;
+				mInitialJid = invite.getJid().toString();
 			}
 			return true;
 		}
@@ -646,7 +659,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 	protected void filterContacts(String needle) {
 		this.contacts.clear();
 		for (Account account : xmppConnectionService.getAccounts()) {
-			if (account.getStatus() != Account.STATUS_DISABLED) {
+			if (account.getStatus() != Account.State.DISABLED) {
 				for (Contact contact : account.getRoster().getContacts()) {
 					if (contact.showInRoster() && contact.match(needle)) {
 						this.contacts.add(contact);
@@ -661,7 +674,7 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 	protected void filterConferences(String needle) {
 		this.conferences.clear();
 		for (Account account : xmppConnectionService.getAccounts()) {
-			if (account.getStatus() != Account.STATUS_DISABLED) {
+			if (account.getStatus() != Account.State.DISABLED) {
 				for (Bookmark bookmark : account.getBookmarks()) {
 					if (bookmark.match(needle)) {
 						this.conferences.add(bookmark);
@@ -740,20 +753,14 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 		}
 	}
 
-	private class Invite {
-		private String jid;
-		private boolean muc;
+	private class Invite extends XmppUri {
 
-		Invite(Uri uri) {
-			parse(uri);
+		public Invite(Uri uri) {
+			super(uri);
 		}
 
-		Invite(String uri) {
-			try {
-				parse(Uri.parse(uri));
-			} catch (IllegalArgumentException e) {
-				jid = null;
-			}
+		public Invite(String uri) {
+			super(uri);
 		}
 
 		boolean invite() {
@@ -761,29 +768,10 @@ public class StartConversationActivity extends XmppActivity implements OnRosterU
 				if (muc) {
 					showJoinConferenceDialog(jid);
 				} else {
-					return handleJid(jid);
+					return handleJid(this);
 				}
 			}
 			return false;
-		}
-
-		void parse(Uri uri) {
-			String scheme = uri.getScheme();
-			if ("xmpp".equals(scheme)) {
-				// sample: xmpp:jid@foo.com
-				muc = "join".equalsIgnoreCase(uri.getQuery());
-				if (uri.getAuthority() != null) {
-					jid = uri.getAuthority();
-				} else {
-					jid = uri.getSchemeSpecificPart().split("\\?")[0];
-				}
-			} else if ("imto".equals(scheme)) {
-				// sample: imto://xmpp/jid@foo.com
-				try {
-					jid = URLDecoder.decode(uri.getEncodedPath(), "UTF-8").split("/")[1];
-				} catch (final UnsupportedEncodingException ignored) {
-				}
-			}
 		}
 	}
 }

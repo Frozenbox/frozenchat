@@ -150,7 +150,7 @@
     <string name="mgmt_account_are_you_sure">האם אתה בטוח?</string>
     <string name="mgmt_account_delete_confirm_text">אם אתה מוחק את חשבונך כל היסטוריית הדיון שלך תאבד</string>
     <string name="attach_record_voice">הקלט קול</string>
-    <string name="account_settings_jabber_id">מזהה Jabber</string>
+    <string name="account_settings_jabber_id">מזהה Jabber (username@chat.frozenbox.org)</string>
     <string name="account_settings_password">סיסמה</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">אמת סיסמה</string>
@@ -196,7 +196,7 @@
     <string name="create">צור</string>
     <string name="contact_already_exists">איש קשר כבר קיים</string>
     <string name="join">הצטרף</string>
-    <string name="conference_address">כתובת ועידה</string>
+    <string name="conference_address">כתובת ועידה (room@conference.chat.frozenbox.org)</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">שמור בתור סימנייה</string>
     <string name="delete_bookmark">מחק סימנייה</string>

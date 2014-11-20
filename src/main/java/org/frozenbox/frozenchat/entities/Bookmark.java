@@ -1,7 +1,10 @@
 package org.frozenbox.frozenchat.entities;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
+import org.frozenbox.frozenchat.utils.UIHelper;
 import org.frozenbox.frozenchat.xml.Element;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
@@ -37,30 +40,11 @@ public class Bookmark extends Element implements ListItem {
 		}
 	}
 
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	public void setNick(String nick) {
-		Element element = this.findChild("nick");
-		if (element == null) {
-			element = this.addChild("nick");
-		}
-		element.setContent(nick);
-	}
-
-	public void setPassword(String password) {
-		Element element = this.findChild("password");
-		if (element != null) {
-			element.setContent(password);
-		}
-	}
-
 	@Override
 	public int compareTo(final ListItem another) {
-        return this.getDisplayName().compareToIgnoreCase(
-                another.getDisplayName());
-    }
+		return this.getDisplayName().compareToIgnoreCase(
+				another.getDisplayName());
+	}
 
 	@Override
 	public String getDisplayName() {
@@ -78,14 +62,26 @@ public class Bookmark extends Element implements ListItem {
 	public Jid getJid() {
 		final String jid = this.getAttribute("jid");
 		if (jid != null) {
-            try {
-                return Jid.fromString(jid);
-            } catch (final InvalidJidException e) {
-                return null;
-            }
-        } else {
+			try {
+				return Jid.fromString(jid);
+			} catch (final InvalidJidException e) {
+				return null;
+			}
+		} else {
 			return null;
 		}
+	}
+
+	@Override
+	public List<Tag> getTags() {
+		ArrayList<Tag> tags = new ArrayList<Tag>();
+		for (Element element : getChildren()) {
+			if (element.getName().equals("group") && element.getContent() != null) {
+				String group = element.getContent();
+				tags.add(new Tag(group, UIHelper.getColorForName(group)));
+			}
+		}
+		return tags;
 	}
 
 	public String getNick() {
@@ -95,6 +91,14 @@ public class Bookmark extends Element implements ListItem {
 		} else {
 			return null;
 		}
+	}
+
+	public void setNick(String nick) {
+		Element element = this.findChild("nick");
+		if (element == null) {
+			element = this.addChild("nick");
+		}
+		element.setContent(nick);
 	}
 
 	public boolean autojoin() {
@@ -112,27 +116,51 @@ public class Bookmark extends Element implements ListItem {
 		}
 	}
 
+	public void setPassword(String password) {
+		Element element = this.findChild("password");
+		if (element != null) {
+			element.setContent(password);
+		}
+	}
+
 	public boolean match(String needle) {
-		return needle == null
-				|| getJid().toString().toLowerCase(Locale.US).contains(needle.toLowerCase(Locale.US))
-				|| getDisplayName().toLowerCase(Locale.US).contains(
-						needle.toLowerCase(Locale.US));
+		if (needle == null) {
+			return true;
+		}
+		needle = needle.toLowerCase(Locale.US);
+		return getJid().toString().contains(needle) ||
+			getDisplayName().toLowerCase(Locale.US).contains(needle) ||
+			matchInTag(needle);
+	}
+
+	private boolean matchInTag(String needle) {
+		needle = needle.toLowerCase(Locale.US);
+		for (Tag tag : getTags()) {
+			if (tag.getName().toLowerCase(Locale.US).contains(needle)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public Account getAccount() {
 		return this.account;
 	}
 
-	public void setConversation(Conversation conversation) {
-		this.mJoinedConversation = conversation;
-	}
-
 	public Conversation getConversation() {
 		return this.mJoinedConversation;
 	}
 
+	public void setConversation(Conversation conversation) {
+		this.mJoinedConversation = conversation;
+	}
+
 	public String getName() {
 		return this.getAttribute("name");
+	}
+
+	public void setName(String name) {
+		this.name = name;
 	}
 
 	public void unregisterConversation() {

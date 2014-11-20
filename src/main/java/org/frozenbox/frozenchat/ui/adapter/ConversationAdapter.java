@@ -6,6 +6,7 @@ import org.frozenbox.frozenchat.Config;
 import org.frozenbox.frozenchat.R;
 import org.frozenbox.frozenchat.entities.Conversation;
 import org.frozenbox.frozenchat.entities.Downloadable;
+import org.frozenbox.frozenchat.entities.DownloadableFile;
 import org.frozenbox.frozenchat.entities.Message;
 import org.frozenbox.frozenchat.ui.ConversationActivity;
 import org.frozenbox.frozenchat.ui.XmppActivity;
@@ -25,8 +26,8 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
 	private XmppActivity activity;
 
 	public ConversationAdapter(XmppActivity activity,
-			List<Conversation> frozenchat) {
-		super(activity, 0, frozenchat);
+			List<Conversation> conversations) {
+		super(activity, 0, conversations);
 		this.activity = activity;
 	}
 
@@ -41,7 +42,7 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
 		Conversation conversation = getItem(position);
 		if (this.activity instanceof ConversationActivity) {
 			ConversationActivity activity = (ConversationActivity) this.activity;
-			if (!activity.isFrozenchatOverviewHideable()) {
+			if (!activity.isConversationsOverviewHideable()) {
 				if (conversation == activity.getSelectedConversation()) {
 					view.setBackgroundColor(activity
 							.getSecondaryBackgroundColor());
@@ -75,7 +76,7 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
 			convName.setTypeface(null, Typeface.NORMAL);
 		}
 
-		if (message.getType() == Message.TYPE_IMAGE
+		if (message.getType() == Message.TYPE_IMAGE || message.getType() == Message.TYPE_FILE
 				|| message.getDownloadable() != null) {
 			Downloadable d = message.getDownloadable();
 			if (conversation.isRead()) {
@@ -89,13 +90,35 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
 				if (d.getStatus() == Downloadable.STATUS_CHECKING) {
 					mLastMessage.setText(R.string.checking_image);
 				} else if (d.getStatus() == Downloadable.STATUS_DOWNLOADING) {
-					mLastMessage.setText(R.string.receiving_image);
+					if (message.getType() == Message.TYPE_FILE) {
+						mLastMessage.setText(getContext().getString(R.string.receiving_file,d.getMimeType(), d.getProgress()));
+					} else {
+						mLastMessage.setText(getContext().getString(R.string.receiving_image, d.getProgress()));
+					}
 				} else if (d.getStatus() == Downloadable.STATUS_OFFER) {
-					mLastMessage.setText(R.string.image_offered_for_download);
+					if (message.getType() == Message.TYPE_FILE) {
+						mLastMessage.setText(R.string.file_offered_for_download);
+					} else {
+						mLastMessage.setText(R.string.image_offered_for_download);
+					}
 				} else if (d.getStatus() == Downloadable.STATUS_OFFER_CHECK_FILESIZE) {
 					mLastMessage.setText(R.string.image_offered_for_download);
 				} else if (d.getStatus() == Downloadable.STATUS_DELETED) {
-					mLastMessage.setText(R.string.image_file_deleted);
+					if (message.getType() == Message.TYPE_FILE) {
+						mLastMessage.setText(R.string.file_deleted);
+					} else {
+						mLastMessage.setText(R.string.image_file_deleted);
+					}
+				} else if (d.getStatus() == Downloadable.STATUS_FAILED) {
+					if (message.getType() == Message.TYPE_FILE) {
+						mLastMessage.setText(R.string.file_transmission_failed);
+					} else {
+						mLastMessage.setText(R.string.image_transmission_failed);
+					}
+				} else if (message.getImageParams().width > 0) {
+					mLastMessage.setVisibility(View.GONE);
+					imagePreview.setVisibility(View.VISIBLE);
+					activity.loadBitmap(message, imagePreview);
 				} else {
 					mLastMessage.setText("");
 				}
@@ -103,6 +126,11 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
 				imagePreview.setVisibility(View.GONE);
 				mLastMessage.setVisibility(View.VISIBLE);
 				mLastMessage.setText(R.string.encrypted_message_received);
+			} else if (message.getType() == Message.TYPE_FILE && message.getImageParams().width <= 0) {
+				DownloadableFile file = activity.xmppConnectionService.getFileBackend().getFile(message);
+				mLastMessage.setVisibility(View.VISIBLE);
+				imagePreview.setVisibility(View.GONE);
+				mLastMessage.setText(getContext().getString(R.string.file,file.getMimeType()));
 			} else {
 				mLastMessage.setVisibility(View.GONE);
 				imagePreview.setVisibility(View.VISIBLE);
