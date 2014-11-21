@@ -5,7 +5,7 @@
         <item>Мобильный</item>
         <item>Телефон</item>
         <item>Планшет</item>
-        <item>FrozenChat</item>
+        <item>Conversations</item>
         <item>Андроид</item>
     </string-array>
     <string-array name="filesizes">

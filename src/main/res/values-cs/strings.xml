@@ -17,7 +17,7 @@
     <string name="title_activity_settings">Nastavení</string>
     <string name="title_activity_conference_details">Detaily konference</string>
     <string name="title_activity_contact_details">Detaily kontaktu</string>
-    <string name="title_activity_conversations">Konverzace</string>
+    <string name="title_activity_conversations">FrozenChat</string>
     <string name="title_activity_sharewith">Sdílet s konverzací</string>
     <string name="title_activity_start_conversation">Začít konverzaci</string>
     <string name="title_activity_choose_contact">Vybrat kontakt</string>
@@ -153,7 +153,7 @@
     <string name="mgmt_account_are_you_sure">Jste si jisti?</string>
     <string name="mgmt_account_delete_confirm_text">Pokud smažete svůj účet celá historie konverzací bude ztracena</string>
     <string name="attach_record_voice">Nahrát hlas</string>
-    <string name="account_settings_jabber_id">Jabber ID (username@chat.frozenbox.org)</string>
+    <string name="account_settings_jabber_id">Jabber ID  (username@chat.frozenbox.org)</string>
     <string name="account_settings_password">Heslo</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">Potvrdit heslo</string>
@@ -202,7 +202,7 @@
     <string name="create">Vytvořit</string>
     <string name="contact_already_exists">Kontakt již existuje</string>
     <string name="join">Vstoupit</string>
-    <string name="conference_address">Adresa konference  (room@conference.chat.frozenbox.org)</string>
+    <string name="conference_address">Adresa konference</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">Uložit jako záložku</string>
     <string name="delete_bookmark">Smazat záložku</string>

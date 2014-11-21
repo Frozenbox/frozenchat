@@ -44,8 +44,8 @@
     <string name="delete">刪除</string>
     <string name="save">儲存</string>
     <string name="ok">好的</string>
-    <string name="crash_report_title">Frozenchat 停止運行</string>
-    <string name="crash_report_message">發送「堆疊追蹤」給 Frozenchat 的開發人員能幫助改進本程式。\n<b>警告:</b> 你的 XMPP 帳戶將被用作發送有關訊息之用。</string>
+    <string name="crash_report_title">FrozenChat 停止運行</string>
+    <string name="crash_report_message">發送「堆疊追蹤」給 Conversations 的開發人員能幫助改進本程式。\n<b>警告:</b> 你的 XMPP 帳戶將被用作發送有關訊息之用。</string>
     <string name="send_now">現在發送</string>
     <string name="send_never">不再詢問</string>
     <string name="problem_connecting_to_account">無法連接至帳戶</string>
@@ -73,15 +73,15 @@
     <string name="send_unencrypted">不加密發送</string>
     <string name="decryption_failed">解密失敗，可能是私鑰不正確。</string>
     <string name="openkeychain_required">OpenKeychain</string>
-    <string name="openkeychain_required_long">Frozenchat 使用一個名為 <b>OpenKeychain</b> 的第三方程式來加密、解碼訊息以及管理您的公鑰。\n\nOpenKeychain 以 GPLv3 釋出，並可在 F-Droid 和 Google Play 上下載。\n\n<small>(之後請重新啟動 Frozenchat。)</small></string>
+    <string name="openkeychain_required_long">FrozenChat 使用一個名為 <b>OpenKeychain</b> 的第三方程式來加密、解碼訊息以及管理您的公鑰。\n\nOpenKeychain 以 GPLv3 釋出，並可在 F-Droid 和 Google Play 上下載。\n\n<small>(之後請重新啟動 Conversations。)</small></string>
     <string name="restart">重新啟動</string>
 	<string name="install">安裝</string>
     <string name="offering">提供中&#8230;</string>
     <string name="waiting">等待中&#8230;</string>
     <string name="no_pgp_key">找不到 OpenPGP 鑰匙</string>
-    <string name="contact_has_no_pgp_key">Frozenchat 不能將你的訊息加密，因為聯絡人沒有公佈他/她的公鑰。\n\n<small>請通知聯絡人設定 OpenPGP。</small></string>
+    <string name="contact_has_no_pgp_key">FrozenChat 不能將你的訊息加密，因為聯絡人沒有公佈他/她的公鑰。\n\n<small>請通知聯絡人設定 OpenPGP。</small></string>
     <string name="no_pgp_keys">找不到多條 OpenPGP 鑰匙</string>
-    <string name="contacts_have_no_pgp_keys">Frozenchat 不能將你的訊息加密，因為多位聯絡人沒有公佈他/她的公鑰。\n\n<small>請通知聯絡人設定 OpenPGP。</small></string>
+    <string name="contacts_have_no_pgp_keys">FrozenChat 不能將你的訊息加密，因為多位聯絡人沒有公佈他/她的公鑰。\n\n<small>請通知聯絡人設定 OpenPGP。</small></string>
     <string name="encrypted_message_received"><i>已收到加密訊息，點擊進行解密和查看。</i></string>
     <string name="encrypted_image_received"><i>已收到加密圖片，點擊進行解密和查看。</i></string>
     <string name="image_file"><i>已收到圖片，點擊查看</i></string>
@@ -103,7 +103,7 @@
     <string name="pref_notification_grace_period_summary">收到副本後，關閉通知一小段時間</string>
     <string name="pref_advanced_options">進階選項</string>
     <string name="pref_never_send_crash">總是不發送故障報告</string>
-    <string name="pref_never_send_crash_summary">發送「堆疊追蹤」給 Frozenchat 的開發人員能幫助改進本程式</string>
+    <string name="pref_never_send_crash_summary">發送「堆疊追蹤」給 Conversations 的開發人員能幫助改進本程式</string>
     <string name="pref_confirm_messages">確認訊息</string>
     <string name="pref_confirm_messages_summary">讓你的聯絡人知道你已收到及閱讀訊息</string>
     <string name="pref_ui_options">介面選項</string>
@@ -151,7 +151,7 @@
     <string name="mgmt_account_are_you_sure">你確定嗎？</string>
     <string name="mgmt_account_delete_confirm_text">如果刪除帳戶，則所有對話訊息將會被刪除</string>
     <string name="attach_record_voice">錄音</string>
-    <string name="account_settings_jabber_id">Jabber ID  (username@chat.frozenbox.org)</string>
+    <string name="account_settings_jabber_id">Jabber ID (username@chat.frozenbox.org)</string>
     <string name="account_settings_password">密碼</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">確認密碼</string>
@@ -200,7 +200,7 @@
     <string name="create">新增</string>
     <string name="contact_already_exists">聯絡人已存在</string>
     <string name="join">加入</string>
-    <string name="conference_address">群組地址 (room@conference.chat.frozenbox.org)</string>
+    <string name="conference_address">群組地址</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">儲存為書籤</string>
     <string name="delete_bookmark">刪除書籤</string>

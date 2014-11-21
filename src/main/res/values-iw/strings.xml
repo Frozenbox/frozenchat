@@ -18,7 +18,7 @@
     <string name="title_activity_conference_details">פרטי ועידה</string>
     <string name="title_activity_contact_details">פרטי איש קשר</string>
     <string name="title_activity_conversations">דיונים</string>
-    <string name="title_activity_sharewith">שתף בעזרת Frozenchat</string>
+    <string name="title_activity_sharewith">שתף בעזרת Conversations</string>
     <string name="title_activity_start_conversation">התחל דיון</string>
     <string name="title_activity_choose_contact">בחר איש קשר</string>
     <string name="just_now">רק כעת</string>
@@ -46,8 +46,8 @@
     <string name="delete">מחק</string>
     <string name="save">שמור</string>
     <string name="ok">אישור</string>
-    <string name="crash_report_title">Frozenchat קרסה</string>
-    <string name="crash_report_message">על ידי שליחת עקבות מחסנית אתה עוזר להתקדמות הפיתוח של Frozenchat\n<b>אזהרה:</b> זו תעשה שימוש בחשבון XMPP שלך כדי לשלוח עקבות מחסנית אל המפתח.</string>
+    <string name="crash_report_title">FrozenChat קרסה</string>
+    <string name="crash_report_message">על ידי שליחת עקבות מחסנית אתה עוזר להתקדמות הפיתוח של Conversations\n<b>אזהרה:</b> זו תעשה שימוש בחשבון XMPP שלך כדי לשלוח עקבות מחסנית אל המפתח.</string>
     <string name="send_now">שלח עכשיו</string>
     <string name="send_never">לעולם אל תשאל שוב</string>
     <string name="problem_connecting_to_account">לא מסוגל להתחבר אל חשבון</string>
@@ -75,15 +75,15 @@
     <string name="send_unencrypted">שלח לא מוצפנת</string>
     <string name="decryption_failed">פענוח נכשל. אולי אין לך את המפתח הפרטי המתאים.</string>
     <string name="openkeychain_required">OpenKeychain</string>
-    <string name="openkeychain_required_long">Frozenchat מפיקה תועלת מן אפליקציית צד-שלישי הקרויה <b>OpenKeychain</b> כדי להצפין ולפענח הודעות וגם כדי לנהל את המפתחות הפומביים שלך.\n\nOpenKeychain הינה רשויה תחת GPLv3 וזמינה אצל F-Droid וגם Google Play.\n\n<small>(אנא התחל מחדש את Frozenchat לאחר מכן.)</small></string>
+    <string name="openkeychain_required_long">FrozenChat מפיקה תועלת מן אפליקציית צד-שלישי הקרויה <b>OpenKeychain</b> כדי להצפין ולפענח הודעות וגם כדי לנהל את המפתחות הפומביים שלך.\n\nOpenKeychain הינה רשויה תחת GPLv3 וזמינה אצל F-Droid וגם Google Play.\n\n<small>(אנא התחל מחדש את Conversations לאחר מכן.)</small></string>
     <string name="restart">התחל מחדש</string>
     <string name="install">התקן</string>
     <string name="offering">כעת מציע&#8230;</string>
     <string name="waiting">כעת ממתין&#8230;</string>
     <string name="no_pgp_key">לא נמצא מפתח OpenPGP</string>
-    <string name="contact_has_no_pgp_key">Frozenchat אינה מסוגלת להצפין את הודעותיך משום שאיש הקשר שלך אינו מכריז על המפתח הפומבי שלו או שלה.\n\n<small>אנא בקש מאיש הקשר שלך לארגן OpenPGP.</small></string>
+    <string name="contact_has_no_pgp_key">FrozenChat אינה מסוגלת להצפין את הודעותיך משום שאיש הקשר שלך אינו מכריז על המפתח הפומבי שלו או שלה.\n\n<small>אנא בקש מאיש הקשר שלך לארגן OpenPGP.</small></string>
     <string name="no_pgp_keys">לא נמצאו מפתחות OpenPGP</string>
-    <string name="contacts_have_no_pgp_keys">Frozenchat אינה מסוגלת להצפין את הודעותיך משום שאנשי הקשר שלך אינם מכריזים על המפתח הפומבי שלהם.\n\n<small>אנא בקש מאנשי הקשר שלך לארגן OpenPGP.</small></string>
+    <string name="contacts_have_no_pgp_keys">FrozenChat אינה מסוגלת להצפין את הודעותיך משום שאנשי הקשר שלך אינם מכריזים על המפתח הפומבי שלהם.\n\n<small>אנא בקש מאנשי הקשר שלך לארגן OpenPGP.</small></string>
     <string name="encrypted_message_received"><i>הודעה מוצפנת התקבלה. לחץ כדי לצפות ולפענח.</i></string>
     <string name="encrypted_image_received"><i>תצלום מוצפן התקבל. לחץ כדי לצפות ולפענח.</i></string>
     <string name="image_file"><i>תצלום התקבל. לחץ כדי לצפות</i></string>
@@ -104,7 +104,7 @@
     <string name="pref_notification_grace_period_summary">נטרל התראות לזמן קצר לאחר שהודעת פחם התקבלה</string>
     <string name="pref_advanced_options">אפשרויות מתקדמות</string>
     <string name="pref_never_send_crash">לעולם אל תשלח דיווחי קריסה</string>
-    <string name="pref_never_send_crash_summary">על ידי שליחת עקבות מחסנית אתה עוזר להתקדמות הפיתוח של Frozenchat</string>
+    <string name="pref_never_send_crash_summary">על ידי שליחת עקבות מחסנית אתה עוזר להתקדמות הפיתוח של Conversations</string>
     <string name="pref_confirm_messages">אשר הודעות</string>
     <string name="pref_confirm_messages_summary">אפשר לאיש קשר שלך לדעת מתי קיבלת וקראת הודעה</string>
     <string name="openpgp_error">OpenKeychain דיווח שגיאה</string>
@@ -150,7 +150,7 @@
     <string name="mgmt_account_are_you_sure">האם אתה בטוח?</string>
     <string name="mgmt_account_delete_confirm_text">אם אתה מוחק את חשבונך כל היסטוריית הדיון שלך תאבד</string>
     <string name="attach_record_voice">הקלט קול</string>
-    <string name="account_settings_jabber_id">מזהה Jabber (username@chat.frozenbox.org)</string>
+    <string name="account_settings_jabber_id">מזהה Jabber</string>
     <string name="account_settings_password">סיסמה</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">אמת סיסמה</string>
@@ -196,7 +196,7 @@
     <string name="create">צור</string>
     <string name="contact_already_exists">איש קשר כבר קיים</string>
     <string name="join">הצטרף</string>
-    <string name="conference_address">כתובת ועידה (room@conference.chat.frozenbox.org)</string>
+    <string name="conference_address">כתובת ועידה</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">שמור בתור סימנייה</string>
     <string name="delete_bookmark">מחק סימנייה</string>

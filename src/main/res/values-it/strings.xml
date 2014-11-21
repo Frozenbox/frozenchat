@@ -46,8 +46,8 @@
     <string name="delete">Elimina</string>
     <string name="save">Salva</string>
     <string name="ok">OK</string>
-    <string name="crash_report_title">Frozenchat è crashato</string>
-    <string name="crash_report_message">Se scegli di inviare una segnalazione dell\'errore aiuterai lo sviluppo di Frozenchat\n<b>Attenzione:</b> Questo utilizzerà il tuo account XMPP per inviare la segnalazione agli sviluppatori.</string>
+    <string name="crash_report_title">FrozenChat è crashato</string>
+    <string name="crash_report_message">Se scegli di inviare una segnalazione dell\'errore aiuterai lo sviluppo di Conversations\n<b>Attenzione:</b> Questo utilizzerà il tuo account XMPP per inviare la segnalazione agli sviluppatori.</string>
     <string name="send_now">Invia adesso</string>
     <string name="send_never">Non chiedere mai più</string>
     <string name="problem_connecting_to_account">Impossibile collegarsi all\'utente</string>
@@ -75,15 +75,15 @@
     <string name="send_unencrypted">Invia non cifrato</string>
     <string name="decryption_failed">Decifrazione fallita. Forse non disponi della chiave privata corretta.</string>
     <string name="openkeychain_required">OpenKeychain</string>
-    <string name="openkeychain_required_long">Frozenchat usa una app di terze parti chiamata <b>OpenKeychain</b> per cifrare e decifrare i messaggi per gestire le tue chiavi pubbliche.\n\nOpenKeychain è rilasciato secondo i termini della GPLv3 ed è disponibile sia su F-Droid, che su Google Play.\n\n<small>(Riavvia Frozenchat in seguito.)</small></string>
+    <string name="openkeychain_required_long">FrozenChat usa una app di terze parti chiamata <b>OpenKeychain</b> per cifrare e decifrare i messaggi per gestire le tue chiavi pubbliche.\n\nOpenKeychain è rilasciato secondo i termini della GPLv3 ed è disponibile sia su F-Droid, che su Google Play.\n\n<small>(Riavvia Conversations in seguito.)</small></string>
     <string name="restart">Riavvia</string>
     <string name="install">Installa</string>
     <string name="offering">offrendo&#8230;</string>
     <string name="waiting">in attesa&#8230;</string>
     <string name="no_pgp_key">Nessuna chiave OpenPGP trovata</string>
-    <string name="contact_has_no_pgp_key">Frozenchat non è in grado di cifrare i tuoi messaggi perchè il contatto non sta annunciando la sua chiave pubblica.\n\n<small>Per favore chiedi al tuo contatto di configurare OpenPGP.</small></string>
+    <string name="contact_has_no_pgp_key">FrozenChat non è in grado di cifrare i tuoi messaggi perché il contatto non sta annunciando la sua chiave pubblica.\n\n<small>Per favore chiedi al tuo contatto di configurare OpenPGP.</small></string>
     <string name="no_pgp_keys">Nessuna chiave OpenPGP trovata</string>
-    <string name="contacts_have_no_pgp_keys">Frozenchat non è in grado di cifrare i tuoi messaggi perchè i contatti non stanno annunciando la propria chiave pubblica.\n\n<small>Per favore chiedi ai tuoi contatti di configurare OpenPGP.</small></string>
+    <string name="contacts_have_no_pgp_keys">FrozenChat non è in grado di cifrare i tuoi messaggi perché i contatti non stanno annunciando la propria chiave pubblica.\n\n<small>Per favore chiedi ai tuoi contatti di configurare OpenPGP.</small></string>
     <string name="encrypted_message_received"><i>Messaggio cifrato ricevuto. Tocca per decifrare.</i></string>
     <string name="encrypted_image_received"><i>Immagine cifrata ricevuta. Tocca per decifrare e mostrare.</i></string>
     <string name="image_file"><i>Immagine ricevuta. Tocca per mostrare</i></string>
@@ -105,7 +105,7 @@
     <string name="pref_notification_grace_period_summary">Disabilita le notifiche per un breve lasso di tempo dopo che un messaggio è stato ricevuto</string>
     <string name="pref_advanced_options">Opzioni Avanzate</string>
     <string name="pref_never_send_crash">Non inviare mai segnalazioni di errore</string>
-    <string name="pref_never_send_crash_summary">Se scegli di inviare una segnalazione dell\'errore aiuterai lo sviluppo di Frozenchat</string>
+    <string name="pref_never_send_crash_summary">Se scegli di inviare una segnalazione dell\'errore aiuterai lo sviluppo di Conversations</string>
     <string name="pref_confirm_messages">Conferma Messaggi</string>
     <string name="pref_confirm_messages_summary">Fai sapere ai tuoi contatti quando hai ricevuto il messaggio e l\'hai letto</string>
     <string name="pref_ui_options">Opzioni Interfaccia</string>
@@ -153,7 +153,7 @@
     <string name="mgmt_account_are_you_sure">Sei sicuro?</string>
     <string name="mgmt_account_delete_confirm_text">Se cancelli il tuo utente la cronologia delle tue conversazioni verrà persa</string>
     <string name="attach_record_voice">Registra la voce</string>
-    <string name="account_settings_jabber_id">ID Jabber (username@chat.frozenbox.org)</string>
+    <string name="account_settings_jabber_id">ID Jabber</string>
     <string name="account_settings_password">Password</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">Conferma password</string>
@@ -177,7 +177,7 @@
     <string name="server_info_available">disponibile</string>
     <string name="server_info_unavailable">non disponibile</string>
     <string name="missing_public_keys">Annuncio chiave pubblica non effettuato</string>
-    <string name="last_seen_now">appena visto</string>
+    <string name="last_seen_now">visto adesso</string>
     <string name="last_seen_min">visto 1 minuto fa</string>
     <string name="last_seen_mins">visto %d minuti fa</string>
     <string name="last_seen_hour">visto 1 ora fa</string>
@@ -202,7 +202,7 @@
     <string name="create">Crea</string>
     <string name="contact_already_exists">Il contatto esiste già</string>
     <string name="join">Entra</string>
-    <string name="conference_address">Indirizzo conferenza (room@conference.chat.frozenbox.org)</string>
+    <string name="conference_address">Indirizzo conferenza</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">Salva come segnalibro</string>
     <string name="delete_bookmark">Elimina segnalibro</string>

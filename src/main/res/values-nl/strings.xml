@@ -145,7 +145,7 @@
     <string name="mgmt_account_are_you_sure">Weet U het zeker?</string>
     <string name="mgmt_account_delete_confirm_text">Als U uw account verwijderd wordt Uw volledige conversatie geschiedenis gewist</string>
     <string name="attach_record_voice">Neem stem op</string>
-    <string name="account_settings_jabber_id">Jabber ID (username@chat.frozenbox.org)</string>
+    <string name="account_settings_jabber_id">Jabber ID:</string>
     <string name="account_settings_password">Wachtwoord:</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">Bevestig wachtwoord:</string>
@@ -200,7 +200,7 @@
     <string name="delete_contact">Contact Verwijderen</string>
     <string name="create">Aanmaken</string>
     <string name="leave">Verlaten</string>
-    <string name="conference_address">Groepsconversatie adres (room@conference.chat.frozenbox.org)</string>
+    <string name="conference_address">Groepsconversatie adres</string>
     <string name="save_as_bookmark">Bladwijzer toevoegen</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="add_back">Terug toevoegen</string>

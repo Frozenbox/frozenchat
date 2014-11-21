@@ -2,9 +2,9 @@
 <resources>
 
     <style name="FrozenchatTheme" parent="@android:style/Theme.Holo.Light.DarkActionBar">
-        <item name="android:actionBarStyle">@style/FrozenchatActionBar</item>
-        <item name="android:actionBarWidgetTheme">@style/FrozenchatActionBarWidget</item>
-        <item name="android:actionBarTabStyle">@style/FrozenchatActionBarTabs</item>
+        <item name="android:actionBarStyle">@style/ConversationsActionBar</item>
+        <item name="android:actionBarWidgetTheme">@style/ConversationsActionBarWidget</item>
+        <item name="android:actionBarTabStyle">@style/ConversationsActionBarTabs</item>
         <item name="TextSizeInfo">12sp</item>
         <item name="TextSizeBody">14sp</item>
         <item name="TextSizeHeadline">20sp</item>
@@ -16,19 +16,19 @@
         <item name="TextSizeHeadline">22sp</item>
     </style>
 
-    <style name="FrozenchatActionBar" parent="@android:style/Widget.Holo.Light.ActionBar.Solid.Inverse">
+    <style name="ConversationsActionBar" parent="@android:style/Widget.Holo.Light.ActionBar.Solid.Inverse">
         <item name="android:background">@color/primary</item>
         <item name="android:backgroundStacked">@color/primarydark</item>
         <item name="android:displayOptions">showHome|homeAsUp|showTitle</item>
         <item name="android:icon">@android:color/transparent</item>
     </style>
 
-    <style name="FrozenchatActionBarWidget" parent="android:Theme.Holo.Light">
+    <style name="ConversationsActionBarWidget" parent="android:Theme.Holo.Light">
         <item name="android:popupMenuStyle">@android:style/Widget.Holo.Light.PopupMenu</item>
         <item name="android:dropDownListViewStyle">@android:style/Widget.Holo.Light.ListView.DropDown</item>
     </style>
 
-    <style name="FrozenchatActionBarTabs" parent="@android:style/Widget.Holo.ActionBar.TabView">
+    <style name="ConversationsActionBarTabs" parent="@android:style/Widget.Holo.ActionBar.TabView">
         <item name="android:background">@drawable/actionbar_tab_indicator</item>
     </style>
 

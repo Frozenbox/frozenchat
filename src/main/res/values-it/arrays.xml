@@ -5,7 +5,7 @@
         <item>Cellulare</item>
         <item>Telefono</item>
         <item>Tablet</item>
-        <item>FrozenChat</item>
+        <item>Conversations</item>
         <item>Android</item>
     </string-array>
     <string-array name="filesizes">
@@ -25,7 +25,7 @@
         <item>un\'ora</item>
         <item>2 ore</item>
         <item>8 ore</item>
-        <item>fino ad ulteriore avviso</item>
+        <item>fino avviso ulteriore</item>
     </string-array>
 
     <integer-array name="mute_options_durations">

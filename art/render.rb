@@ -1,4 +1,4 @@
-#!/bin/env ruby
+#!/usr/bin/ruby
 resolutions={
 	'mdpi'=> 1,
 	'hdpi' => 1.5,
@@ -6,8 +6,8 @@ resolutions={
 	'xxhdpi' => 3,
 	}
 images = {
-	'conversations_baloon.svg' => ['ic_launcher', 48],
-	'conversations_mono.svg' => ['ic_notification', 24],
+	'frozenchat_baloon.svg' => ['ic_launcher', 48],
+	'frozenchat_mono.svg' => ['ic_notification', 24],
 	'ic_received_indicator.svg' => ['ic_received_indicator', 12],
 	}
 images.each do |source, result|

@@ -47,7 +47,7 @@
     <string name="save">Save</string>
     <string name="ok">OK</string>
     <string name="crash_report_title">FrozenChat has crashed</string>
-    <string name="crash_report_message">By sending in stack traces you are helping the ongoing development of Frozenchat\n<b>Warning:</b> This will use your XMPP account to send the stack trace to the developer.</string>
+    <string name="crash_report_message">By sending in stack traces you are helping the ongoing development of FrozenChat\n<b>Warning:</b> This will use your XMPP account to send the stack trace to the developer.</string>
     <string name="send_now">Send now</string>
     <string name="send_never">Never ask again</string>
     <string name="problem_connecting_to_account">Unable to connect to account</string>
@@ -58,7 +58,7 @@
     <string name="add_contact">Add contact</string>
     <string name="send_failed">delivery failed</string>
     <string name="send_rejected">rejected</string>
-    <string name="receiving_image">Receiving image file. Please wait…</string>
+    <string name="receiving_image">Receiving image file (%1$d%%)</string>
     <string name="preparing_image">Preparing image for transmission</string>
     <string name="action_clear_history">Clear history</string>
     <string name="clear_conversation_history">Clear Conversation History</string>
@@ -75,15 +75,15 @@
     <string name="send_unencrypted">Send unencrypted</string>
     <string name="decryption_failed">Decryption failed. Maybe you don’t have the proper private key.</string>
     <string name="openkeychain_required">OpenKeychain</string>
-    <string name="openkeychain_required_long">Frozenchat utilizes a third party app called <b>OpenKeychain</b> to encrypt and decrypt messages and to manage your public keys.\n\nOpenKeychain is licensed under GPLv3 and available on F-Droid and Google Play.\n\n<small>(Please restart Frozenchat afterwards.)</small></string>
+    <string name="openkeychain_required_long">FrozenChat utilizes a third party app called <b>OpenKeychain</b> to encrypt and decrypt messages and to manage your public keys.\n\nOpenKeychain is licensed under GPLv3 and available on F-Droid and Google Play.\n\n<small>(Please restart FrozenChat afterwards.)</small></string>
     <string name="restart">Restart</string>
     <string name="install">Install</string>
     <string name="offering">offering…</string>
     <string name="waiting">waiting…</string>
     <string name="no_pgp_key">No OpenPGP Key found</string>
-    <string name="contact_has_no_pgp_key">Frozenchat is unable to encrypt your messages because your contact is not announcing his or hers public key.\n\n<small>Please ask your contact to setup OpenPGP.</small></string>
+    <string name="contact_has_no_pgp_key">FrozenChat is unable to encrypt your messages because your contact is not announcing his or hers public key.\n\n<small>Please ask your contact to setup OpenPGP.</small></string>
     <string name="no_pgp_keys">No OpenPGP Keys found</string>
-    <string name="contacts_have_no_pgp_keys">Frozenchat is unable to encrypt your messages because your contacts are not announcing their public key.\n\n<small>Please ask your contacts to setup OpenPGP.</small></string>
+    <string name="contacts_have_no_pgp_keys">FrozenChat is unable to encrypt your messages because your contacts are not announcing their public key.\n\n<small>Please ask your contacts to setup OpenPGP.</small></string>
     <string name="encrypted_message_received"><i>Encrypted message received. Touch to view and decrypt.</i></string>
     <string name="encrypted_image_received"><i>Encrypted image received. Touch to view and decrypt.</i></string>
     <string name="image_file"><i>Image received. Touch to view</i></string>
@@ -105,7 +105,7 @@
     <string name="pref_notification_grace_period_summary">Disable notifications for a short time after a carbon copy was received</string>
     <string name="pref_advanced_options">Advanced Options</string>
     <string name="pref_never_send_crash">Never send crash reports</string>
-    <string name="pref_never_send_crash_summary">By sending in stack traces you are helping the ongoing development of Frozenchat</string>
+    <string name="pref_never_send_crash_summary">By sending in stack traces you are helping the ongoing development of FrozenChat</string>
     <string name="pref_confirm_messages">Confirm Messages</string>
     <string name="pref_confirm_messages_summary">Let your contact know when you have received and read a message</string>
     <string name="pref_ui_options">UI Options</string>
@@ -141,6 +141,8 @@
     <string name="account_status_regis_conflict">Username already in use</string>
     <string name="account_status_regis_success">Registration completed</string>
     <string name="account_status_regis_not_sup">Server does not support registration</string>
+    <string name="account_status_security_error">Security error</string>
+    <string name="account_status_incompatible_server">Incompatible server</string>
     <string name="encryption_choice_none">Plain text</string>
     <string name="encryption_choice_otr">OTR</string>
     <string name="encryption_choice_pgp">OpenPGP</string>
@@ -202,7 +204,7 @@
     <string name="create">Create</string>
     <string name="contact_already_exists">The contact already exists</string>
     <string name="join">Join</string>
-    <string name="conference_address">Conference address (room@conference.chat.frozenbox.org)</string>
+    <string name="conference_address">Conference address</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">Save as bookmark</string>
     <string name="delete_bookmark">Delete bookmark</string>
@@ -256,7 +258,7 @@
     <string name="pref_expert_options_summary">Please be careful with these</string>
     <string name="title_activity_about">About FrozenChat</string>
     <string name="pref_about_conversations_summary">Build and licensing information</string>
-    <string name="pref_about_message">
+    <string name="pref_about_message" translatable="false">
             FrozenChat • The ultimate secure communication gateway!.\n\n
             FrozenChat Dev Team\n
             \tLorenzo "EclipseSpark" Faletra\n
@@ -318,4 +320,47 @@
     <string name="scan_qr_code">Scan QR code</string>
     <string name="show_qr_code">Show QR code</string>
     <string name="account_details">Account details</string>
+    <string name="verify_otr">Verify OTR</string>
+    <string name="remote_fingerprint">Remote Fingerprint</string>
+    <string name="scan">scan</string>
+    <string name="or_touch_phones">(or touch phones)</string>
+    <string name="smp">Socialist Millionaire Protocol</string>
+    <string name="shared_secret_hint">Hint or Question</string>
+    <string name="shared_secret_secret">Shared Secret</string>
+    <string name="confirm">Confirm</string>
+    <string name="in_progress">In progress</string>
+    <string name="respond">Respond</string>
+    <string name="failed">Failed</string>
+    <string name="secrets_do_not_match">Secrets do not match</string>
+    <string name="try_again">Try again</string>
+    <string name="finish">Finish</string>
+    <string name="verified">Verified!</string>
+    <string name="smp_requested">Contact requested SMP verification</string>
+    <string name="no_otr_session_found">No valid OTR session has been found!</string>
+    <string name="conversations_foreground_service">FrozenChat</string>
+    <string name="touch_to_disable">Touch to disable foreground service</string>
+    <string name="pref_keep_foreground_service">Keep service in foreground</string>
+    <string name="pref_keep_foreground_service_summary">Prevents the operating system from killing your connection</string>
+    <string name="choose_file">Choose file</string>
+    <string name="receiving_file">Receiving %1$s file (%2$d%% completed)</string>
+    <string name="download_file">Download %s file</string>
+    <string name="open_file">Open %s file</string>
+    <string name="sending_file">sending (%1$d%% completed)</string>
+    <string name="preparing_file">Preparing file for transmission</string>
+    <string name="file_offered_for_download">File offered for download</string>
+    <string name="file">%s file</string>
+    <string name="cancel_transmission">Cancel transmission</string>
+    <string name="file_transmission_failed">file transmission failed</string>
+    <string name="file_deleted">The file has been deleted</string>
+    <string name="no_application_found_to_open_file">No application found to open file</string>
+    <string name="could_not_verify_fingerprint">Could not verify fingerprint</string>
+    <string name="manually_verify">Manually verify</string>
+    <string name="are_you_sure_verify_fingerprint">Are you sure that you want to verify your contacts OTR fingerprint?</string>
+    <string name="pref_show_dynamic_tags">Show dynamic tags</string>
+    <string name="pref_show_dynamic_tags_summary">Display read-only tags underneath contacts</string>
+    <string name="enable_notifications">Enable notifications</string>
+    <string name="conference_with">Create conference with…</string>
+    <string name="no_conference_server_found">No conference server found</string>
+    <string name="conference_creation_failed">Conference creation failed!</string>
+    <string name="conference_created">Conference created!</string>
 </resources>

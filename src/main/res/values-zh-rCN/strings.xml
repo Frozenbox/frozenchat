@@ -46,8 +46,8 @@
     <string name="delete">删除</string>
     <string name="save">保存</string>
     <string name="ok">完成</string>
-    <string name="crash_report_title">Frozenchat停止运行</string>
-    <string name="crash_report_message">发送堆栈跟踪到正在开发Frozenchat的人员\n<b>警告:</b> 该操作将用您的 XMPP账户发送堆栈跟踪到开发人员.</string>
+    <string name="crash_report_title">FrozenChat停止运行</string>
+    <string name="crash_report_message">发送堆栈跟踪到正在开发Conversations的人员\n<b>警告:</b> 该操作将用您的 XMPP账户发送堆栈跟踪到开发人员.</string>
     <string name="send_now">现在发送</string>
     <string name="send_never">不再询问</string>
     <string name="problem_connecting_to_account">无法连接至账户</string>
@@ -75,7 +75,7 @@
     <string name="send_unencrypted">不加密发送</string>
     <string name="decryption_failed">解密失败，可能是私钥不正确.</string>
     <string name="openkeychain_required">OpenKeychain</string>
-    <string name="openkeychain_required_long">会话运用了第三方app，名为 <b>OpenKeychain</b> 用来加密、解码信息以及管理您的公钥.\n\nOpenKeychain 遵循 GPLv3 并且在 F-Droid和Google Play上可操作.\n\n<small>(之后请重启frozenchat.)</small></string>
+    <string name="openkeychain_required_long">会话运用了第三方app，名为 <b>OpenKeychain</b> 用来加密、解码信息以及管理您的公钥.\n\nOpenKeychain 遵循 GPLv3 并且在 F-Droid和Google Play上可操作.\n\n<small>(之后请重启conversations.)</small></string>
     <string name="restart">重启</string>
     <string name="install">安装</string>
     <string name="offering">输入&#8230;</string>
@@ -83,7 +83,7 @@
     <string name="no_pgp_key">未发现OpenPGP 密码</string>
     <string name="contact_has_no_pgp_key">会话加密信息失败，因为联系人未告知他/她的公钥.\n\n<small>请通知联系人设置 OpenPGP.</small></string>
     <string name="no_pgp_keys">未找到 OpenPGP 密码</string>
-    <string name="contacts_have_no_pgp_keys">因您的联系人未公布公钥，Frozenchat未能成功加密您的信息.\n\n<small>请通知联系人设置OpenPGP.</small></string>
+    <string name="contacts_have_no_pgp_keys">因您的联系人未公布公钥，Conversations未能成功加密您的信息.\n\n<small>请通知联系人设置OpenPGP.</small></string>
     <string name="encrypted_message_received"><i>加密信息已接收.点击进行解密和查看.</i></string>
     <string name="encrypted_image_received"><i>加密图像已接收.点击进行解密和查看.</i></string>
     <string name="image_file"><i>图片已成功接收，点击查看</i></string>
@@ -105,7 +105,7 @@
     <string name="pref_notification_grace_period_summary">接收副本短时间内关闭通知</string>
     <string name="pref_advanced_options">高级选项</string>
     <string name="pref_never_send_crash">总不发送故障报告</string>
-    <string name="pref_never_send_crash_summary">发送堆栈跟踪帮助Frozenchat开发人员</string>
+    <string name="pref_never_send_crash_summary">发送堆栈跟踪帮助Conversations开发人员</string>
     <string name="pref_confirm_messages">确认消息</string>
     <string name="pref_confirm_messages_summary">当你已收到消息并且已阅时通知好友</string>
     <string name="pref_ui_options">UI选项</string>
@@ -153,7 +153,7 @@
     <string name="mgmt_account_are_you_sure">确定?</string>
     <string name="mgmt_account_delete_confirm_text">如果删除用户，所有会话信息将会丢失</string>
     <string name="attach_record_voice">Record voice 录音</string>
-    <string name="account_settings_jabber_id">Jabber ID  (username@chat.frozenbox.org)</string>
+    <string name="account_settings_jabber_id">Jabber ID (username@chat.frozenbox.org)</string>
     <string name="account_settings_password">密码</string>
     <string name="account_settings_example_jabber_id">username@chat.frozenbox.org</string>
     <string name="account_settings_confirm_password">确认密码</string>
@@ -202,7 +202,7 @@
     <string name="create">创建</string>
     <string name="contact_already_exists">联系人已存在</string>
     <string name="join">加入</string>
-    <string name="conference_address">讨论组地址 (room@conference.chat.frozenbox.org)</string>
+    <string name="conference_address">讨论组地址</string>
     <string name="conference_address_example">room@conference.chat.frozenbox.org</string>
     <string name="save_as_bookmark">保存为书签</string>
     <string name="delete_bookmark">删除书签</string>
