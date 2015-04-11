@@ -1,9 +1,12 @@
 package org.frozenbox.frozenchat.xml;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 
+import org.frozenbox.frozenchat.Config;
 import org.frozenbox.frozenchat.utils.XmlHelper;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
@@ -59,16 +62,16 @@ public class Element {
 			if (child.getName().equals(name)
 					&& (child.getAttribute("xmlns").equals(xmlns))) {
 				return child;
-			}
+					}
 		}
 		return null;
 	}
 
-	public boolean hasChild(String name) {
+	public boolean hasChild(final String name) {
 		return findChild(name) != null;
 	}
 
-	public boolean hasChild(String name, String xmlns) {
+	public boolean hasChild(final String name, final String xmlns) {
 		return findChild(name, xmlns) != null;
 	}
 
@@ -107,14 +110,15 @@ public class Element {
 
 	public Jid getAttributeAsJid(String name) {
 		final String jid = this.getAttribute(name);
-        if (jid != null && !jid.isEmpty()) {
-            try {
-                return Jid.fromString(jid);
-            } catch (final InvalidJidException e) {
-                return null;
-            }
-        }
-        return null;
+		if (jid != null && !jid.isEmpty()) {
+			try {
+				return Jid.fromString(jid);
+			} catch (final InvalidJidException e) {
+				Log.e(Config.LOGTAG, "could not parse jid " + jid);
+				return null;
+			}
+		}
+		return null;
 	}
 
 	public Hashtable<String, String> getAttributes() {
@@ -158,5 +162,10 @@ public class Element {
 
 	public void setAttribute(String name, int value) {
 		this.setAttribute(name, Integer.toString(value));
+	}
+
+	public boolean getAttributeAsBoolean(String name) {
+		String attr = getAttribute(name);
+		return (attr != null && (attr.equalsIgnoreCase("true") || attr.equalsIgnoreCase("1")));
 	}
 }

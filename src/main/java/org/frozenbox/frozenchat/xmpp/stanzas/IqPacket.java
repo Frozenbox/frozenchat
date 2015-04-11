@@ -4,32 +4,18 @@ import org.frozenbox.frozenchat.xml.Element;
 
 public class IqPacket extends AbstractStanza {
 
-	public static final int TYPE_ERROR = -1;
-	public static final int TYPE_SET = 0;
-	public static final int TYPE_RESULT = 1;
-	public static final int TYPE_GET = 2;
-
-	private IqPacket(String name) {
-		super(name);
+	public static enum TYPE {
+		ERROR,
+		SET,
+		RESULT,
+		GET,
+		INVALID
 	}
 
-	public IqPacket(int type) {
+	public IqPacket(final TYPE type) {
 		super("iq");
-		switch (type) {
-		case TYPE_SET:
-			this.setAttribute("type", "set");
-			break;
-		case TYPE_GET:
-			this.setAttribute("type", "get");
-			break;
-		case TYPE_RESULT:
-			this.setAttribute("type", "result");
-			break;
-		case TYPE_ERROR:
-			this.setAttribute("type", "error");
-			break;
-		default:
-			break;
+		if (type != TYPE.INVALID) {
+			this.setAttribute("type", type.toString().toLowerCase());
 		}
 	}
 
@@ -45,29 +31,30 @@ public class IqPacket extends AbstractStanza {
 		return query;
 	}
 
-	public Element query(String xmlns) {
-		Element query = query();
+	public Element query(final String xmlns) {
+		final Element query = query();
 		query.setAttribute("xmlns", xmlns);
 		return query();
 	}
 
-	public int getType() {
-		String type = getAttribute("type");
-		if ("error".equals(type)) {
-			return TYPE_ERROR;
-		} else if ("result".equals(type)) {
-			return TYPE_RESULT;
-		} else if ("set".equals(type)) {
-			return TYPE_SET;
-		} else if ("get".equals(type)) {
-			return TYPE_GET;
-		} else {
-			return 1000;
+	public TYPE getType() {
+		final String type = getAttribute("type");
+		switch (type) {
+			case "error":
+				return TYPE.ERROR;
+			case "result":
+				return TYPE.RESULT;
+			case "set":
+				return TYPE.SET;
+			case "get":
+				return TYPE.GET;
+			default:
+				return TYPE.INVALID;
 		}
 	}
 
-	public IqPacket generateRespone(int type) {
-		IqPacket packet = new IqPacket(type);
+	public IqPacket generateResponse(final TYPE type) {
+		final IqPacket packet = new IqPacket(type);
 		packet.setTo(this.getFrom());
 		packet.setId(this.getId());
 		return packet;

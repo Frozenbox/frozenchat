@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.CursorLoader;
 import android.content.Loader;
 import android.content.Loader.OnLoadCompleteListener;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -16,10 +17,7 @@ import android.provider.ContactsContract.Profile;
 
 public class PhoneHelper {
 
-	public static void loadPhoneContacts(Context context,
-			final OnPhoneContactsLoadedListener listener) {
-		final List<Bundle> phoneContacts = new ArrayList<Bundle>();
-
+	public static void loadPhoneContacts(Context context,final List<Bundle> phoneContacts, final OnPhoneContactsLoadedListener listener) {
 		final String[] PROJECTION = new String[] { ContactsContract.Data._ID,
 				ContactsContract.Data.DISPLAY_NAME,
 				ContactsContract.Data.PHOTO_URI,
@@ -64,6 +62,7 @@ public class PhoneHelper {
 				if (listener != null) {
 					listener.onPhoneContactsLoaded(phoneContacts);
 				}
+				cursor.close();
 			}
 		});
 		try {
@@ -85,11 +84,25 @@ public class PhoneHelper {
 		} else {
 			mProfileCursor.moveToFirst();
 			String uri = mProfileCursor.getString(1);
+			mProfileCursor.close();
 			if (uri == null) {
 				return null;
 			} else {
 				return Uri.parse(uri);
 			}
+		}
+	}
+
+	public static String getVersionName(Context context) {
+		final String packageName = context == null ? null : context.getPackageName();
+		if (packageName != null) {
+			try {
+				return context.getPackageManager().getPackageInfo(packageName, 0).versionName;
+			} catch (final PackageManager.NameNotFoundException e) {
+				return "unknown";
+			}
+		} else {
+			return "unknown";
 		}
 	}
 }

@@ -1,20 +1,20 @@
 package org.frozenbox.frozenchat.parser;
 
-import android.util.Log;
-
 import net.java.otr4j.session.Session;
 import net.java.otr4j.session.SessionStatus;
 
-import org.frozenbox.frozenchat.Config;
 import org.frozenbox.frozenchat.entities.Account;
 import org.frozenbox.frozenchat.entities.Contact;
 import org.frozenbox.frozenchat.entities.Conversation;
 import org.frozenbox.frozenchat.entities.Message;
+import org.frozenbox.frozenchat.entities.MucOptions;
+import org.frozenbox.frozenchat.http.HttpConnectionManager;
+import org.frozenbox.frozenchat.services.MessageArchiveService;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.utils.CryptoHelper;
 import org.frozenbox.frozenchat.xml.Element;
 import org.frozenbox.frozenchat.xmpp.OnMessagePacketReceived;
-import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
+import org.frozenbox.frozenchat.xmpp.chatstate.ChatState;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 import org.frozenbox.frozenchat.xmpp.pep.Avatar;
 import org.frozenbox.frozenchat.xmpp.stanzas.MessagePacket;
@@ -25,11 +25,27 @@ public class MessageParser extends AbstractParser implements
 		super(service);
 	}
 
+	private boolean extractChatState(Conversation conversation, final Element element) {
+		ChatState state = ChatState.parse(element);
+		if (state != null && conversation != null) {
+			final Account account = conversation.getAccount();
+			Jid from = element.getAttributeAsJid("from");
+			if (from != null && from.toBareJid().equals(account.getJid().toBareJid())) {
+				conversation.setOutgoingChatState(state);
+				return false;
+			} else {
+				return conversation.setIncomingChatState(state);
+			}
+		}
+		return false;
+	}
+
 	private Message parseChat(MessagePacket packet, Account account) {
-        final Jid jid = packet.getFrom();
-		Conversation conversation = mXmppConnectionService
-				.findOrCreateConversation(account, jid.toBareJid(), false);
-		updateLastseen(packet, account, true);
+		final Jid jid = packet.getFrom();
+		if (jid == null) {
+			return null;
+		}
+		Conversation conversation = mXmppConnectionService.findOrCreateConversation(account, jid.toBareJid(), false);
 		String pgpBody = getPgpBody(packet);
 		Message finishedMessage;
 		if (pgpBody != null) {
@@ -44,34 +60,44 @@ public class MessageParser extends AbstractParser implements
 		finishedMessage.markable = isMarkable(packet);
 		if (conversation.getMode() == Conversation.MODE_MULTI
 				&& !jid.isBareJid()) {
+			final Jid trueCounterpart = conversation.getMucOptions()
+					.getTrueCounterpart(jid.getResourcepart());
+			if (trueCounterpart != null) {
+				updateLastseen(packet, account, trueCounterpart, false);
+			}
 			finishedMessage.setType(Message.TYPE_PRIVATE);
-			finishedMessage.setTrueCounterpart(conversation.getMucOptions()
-					.getTrueCounterpart(jid.getResourcepart()));
+			finishedMessage.setTrueCounterpart(trueCounterpart);
 			if (conversation.hasDuplicateMessage(finishedMessage)) {
 				return null;
 			}
-
+		} else {
+			updateLastseen(packet, account, true);
 		}
 		finishedMessage.setCounterpart(jid);
 		finishedMessage.setTime(getTimestamp(packet));
+		extractChatState(conversation,packet);
 		return finishedMessage;
 	}
 
 	private Message parseOtrChat(MessagePacket packet, Account account) {
-		boolean properlyAddressed = (!packet.getTo().isBareJid())
-				|| (account.countPresences() == 1);
-        final Jid from = packet.getFrom();
+		final Jid to = packet.getTo();
+		final Jid from = packet.getFrom();
+		if (to == null || from == null) {
+			return null;
+		}
+		boolean properlyAddressed = !to.isBareJid() || account.countPresences() == 1;
 		Conversation conversation = mXmppConnectionService
 				.findOrCreateConversation(account, from.toBareJid(), false);
 		String presence;
 		if (from.isBareJid()) {
-            presence = "";
+			presence = "";
 		} else {
 			presence = from.getResourcepart();
 		}
+		extractChatState(conversation, packet);
 		updateLastseen(packet, account, true);
 		String body = packet.getBody();
-		if (body.matches("^\\?OTRv\\d*\\?")) {
+		if (body.matches("^\\?OTRv\\d{1,2}\\?.*")) {
 			conversation.endOtrIfNeeded();
 		}
 		if (!conversation.hasValidOtrSession()) {
@@ -93,13 +119,16 @@ public class MessageParser extends AbstractParser implements
 			}
 		}
 		try {
+			conversation.setLastReceivedOtrMessageId(packet.getId());
 			Session otrSession = conversation.getOtrSession();
 			SessionStatus before = otrSession.getSessionStatus();
 			body = otrSession.transformReceiving(body);
 			SessionStatus after = otrSession.getSessionStatus();
 			if ((before != after) && (after == SessionStatus.ENCRYPTED)) {
+				conversation.setNextEncryption(Message.ENCRYPTION_OTR);
 				mXmppConnectionService.onOtrSessionEstablished(conversation);
 			} else if ((before != after) && (after == SessionStatus.FINISHED)) {
+				conversation.setNextEncryption(Message.ENCRYPTION_NONE);
 				conversation.resetOtrSession();
 				mXmppConnectionService.updateConversationUi();
 			}
@@ -117,12 +146,9 @@ public class MessageParser extends AbstractParser implements
 			finishedMessage.setRemoteMsgId(packet.getId());
 			finishedMessage.markable = isMarkable(packet);
 			finishedMessage.setCounterpart(from);
+			conversation.setLastReceivedOtrMessageId(null);
 			return finishedMessage;
 		} catch (Exception e) {
-			String receivedId = packet.getId();
-			if (receivedId != null) {
-				mXmppConnectionService.replyWithNotAcceptable(account, packet);
-			}
 			conversation.resetOtrSession();
 			return null;
 		}
@@ -130,7 +156,7 @@ public class MessageParser extends AbstractParser implements
 
 	private Message parseGroupchat(MessagePacket packet, Account account) {
 		int status;
-        final Jid from = packet.getFrom();
+		final Jid from = packet.getFrom();
 		if (from == null) {
 			return null;
 		}
@@ -140,19 +166,44 @@ public class MessageParser extends AbstractParser implements
 		}
 		Conversation conversation = mXmppConnectionService
 				.findOrCreateConversation(account, from.toBareJid(), true);
+		final Jid trueCounterpart = conversation.getMucOptions().getTrueCounterpart(from.getResourcepart());
+		if (trueCounterpart != null) {
+			updateLastseen(packet, account, trueCounterpart, false);
+		}
 		if (packet.hasChild("subject")) {
-			conversation.getMucOptions().setSubject(
-					packet.findChild("subject").getContent());
+			conversation.setHasMessagesLeftOnServer(true);
+			conversation.getMucOptions().setSubject(packet.findChild("subject").getContent());
 			mXmppConnectionService.updateConversationUi();
 			return null;
 		}
-		if (from.isBareJid()) {
+
+		final Element x = packet.findChild("x", "http://jabber.org/protocol/muc#user");
+		if (from.isBareJid() && (x == null || !x.hasChild("status"))) {
+			return null;
+		} else if (from.isBareJid() && x.hasChild("status")) {
+			for(Element child : x.getChildren()) {
+				if (child.getName().equals("status")) {
+					String code = child.getAttribute("code");
+					if (code.contains(MucOptions.STATUS_CODE_ROOM_CONFIG_CHANGED)) {
+						mXmppConnectionService.fetchConferenceConfiguration(conversation);
+					}
+				}
+			}
 			return null;
 		}
+
 		if (from.getResourcepart().equals(conversation.getMucOptions().getActualNick())) {
 			if (mXmppConnectionService.markMessage(conversation,
-					packet.getId(), Message.STATUS_SEND)) {
+					packet.getId(), Message.STATUS_SEND_RECEIVED)) {
 				return null;
+			} else if (packet.getId() == null) {
+				Message message = conversation.findSentMessageWithBody(packet.getBody());
+				if (message != null) {
+					mXmppConnectionService.markMessage(message,Message.STATUS_SEND_RECEIVED);
+					return null;
+				} else {
+					status = Message.STATUS_SEND;
+				}
 			} else {
 				status = Message.STATUS_SEND;
 			}
@@ -217,7 +268,7 @@ public class MessageParser extends AbstractParser implements
 							mXmppConnectionService.getConversations(), account,
 							to.toBareJid());
 					if (conversation != null) {
-						mXmppConnectionService.markRead(conversation, false);
+						mXmppConnectionService.markRead(conversation);
 					}
 				}
 			}
@@ -236,6 +287,10 @@ public class MessageParser extends AbstractParser implements
 				return null;
 			}
 		}
+		if (message.hasChild("x","http://jabber.org/protocol/muc#user")
+				&& "chat".equals(message.getAttribute("type"))) {
+			return null;
+		}
 		Conversation conversation = mXmppConnectionService
 				.findOrCreateConversation(account, fullJid.toBareJid(), false);
 		String pgpBody = getPgpBody(message);
@@ -248,6 +303,7 @@ public class MessageParser extends AbstractParser implements
 			finishedMessage = new Message(conversation, body,
 					Message.ENCRYPTION_NONE, status);
 		}
+		extractChatState(conversation,message);
 		finishedMessage.setTime(getTimestamp(message));
 		finishedMessage.setRemoteMsgId(message.getAttribute("id"));
 		finishedMessage.markable = isMarkable(message);
@@ -264,6 +320,69 @@ public class MessageParser extends AbstractParser implements
 		return finishedMessage;
 	}
 
+	private Message parseMamMessage(MessagePacket packet, final Account account) {
+		final Element result = packet.findChild("result","urn:xmpp:mam:0");
+		if (result == null ) {
+			return null;
+		}
+		final MessageArchiveService.Query query = this.mXmppConnectionService.getMessageArchiveService().findQuery(result.getAttribute("queryid"));
+		if (query!=null) {
+			query.incrementTotalCount();
+		}
+		final Element forwarded = result.findChild("forwarded","urn:xmpp:forward:0");
+		if (forwarded == null) {
+			return null;
+		}
+		final Element message = forwarded.findChild("message");
+		if (message == null) {
+			return null;
+		}
+		final Element body = message.findChild("body");
+		if (body == null || message.hasChild("private","urn:xmpp:carbons:2") || message.hasChild("no-copy","urn:xmpp:hints")) {
+			return null;
+		}
+		int encryption;
+		String content = getPgpBody(message);
+		if (content != null) {
+			encryption = Message.ENCRYPTION_PGP;
+		} else {
+			encryption = Message.ENCRYPTION_NONE;
+			content = body.getContent();
+		}
+		if (content == null) {
+			return null;
+		}
+		final long timestamp = getTimestamp(forwarded);
+		final Jid to = message.getAttributeAsJid("to");
+		final Jid from = message.getAttributeAsJid("from");
+		Jid counterpart;
+		int status;
+		Conversation conversation;
+		if (from!=null && to != null && from.toBareJid().equals(account.getJid().toBareJid())) {
+			status = Message.STATUS_SEND;
+			conversation = this.mXmppConnectionService.findOrCreateConversation(account,to.toBareJid(),false,query);
+			counterpart = to;
+		} else if (from !=null && to != null) {
+			status = Message.STATUS_RECEIVED;
+			conversation = this.mXmppConnectionService.findOrCreateConversation(account,from.toBareJid(),false,query);
+			counterpart = from;
+		} else {
+			return null;
+		}
+		Message finishedMessage = new Message(conversation,content,encryption,status);
+		finishedMessage.setTime(timestamp);
+		finishedMessage.setCounterpart(counterpart);
+		finishedMessage.setRemoteMsgId(message.getAttribute("id"));
+		finishedMessage.setServerMsgId(result.getAttribute("id"));
+		if (conversation.hasDuplicateMessage(finishedMessage)) {
+			return null;
+		}
+		if (query!=null) {
+			query.incrementMessageCount();
+		}
+		return finishedMessage;
+	}
+
 	private void parseError(final MessagePacket packet, final Account account) {
 		final Jid from = packet.getFrom();
 		mXmppConnectionService.markMessage(account, from.toBareJid(),
@@ -272,18 +391,37 @@ public class MessageParser extends AbstractParser implements
 
 	private void parseNonMessage(Element packet, Account account) {
 		final Jid from = packet.getAttributeAsJid("from");
+		if (extractChatState(from == null ? null : mXmppConnectionService.find(account,from), packet)) {
+			mXmppConnectionService.updateConversationUi();
+		}
+		Element invite = extractInvite(packet);
+		if (invite != null) {
+			Conversation conversation = mXmppConnectionService.findOrCreateConversation(account, from, true);
+			if (!conversation.getMucOptions().online()) {
+				Element password = invite.findChild("password");
+				conversation.getMucOptions().setPassword(password == null ? null : password.getContent());
+				mXmppConnectionService.databaseBackend.updateConversation(conversation);
+				mXmppConnectionService.joinMuc(conversation);
+				mXmppConnectionService.updateConversationUi();
+			}
+		}
 		if (packet.hasChild("event", "http://jabber.org/protocol/pubsub#event")) {
 			Element event = packet.findChild("event",
 					"http://jabber.org/protocol/pubsub#event");
 			parseEvent(event, from, account);
-		} else if (from != null
-				&& packet.hasChild("displayed", "urn:xmpp:chat-markers:0")) {
+		} else if (from != null && packet.hasChild("displayed", "urn:xmpp:chat-markers:0")) {
 			String id = packet
 					.findChild("displayed", "urn:xmpp:chat-markers:0")
 					.getAttribute("id");
 			updateLastseen(packet, account, true);
-			mXmppConnectionService.markMessage(account, from.toBareJid(),
-					id, Message.STATUS_SEND_DISPLAYED);
+			final Message displayedMessage = mXmppConnectionService.markMessage(account, from.toBareJid(), id, Message.STATUS_SEND_DISPLAYED);
+			Message message = displayedMessage == null ? null :displayedMessage.prev();
+			while (message != null
+					&& message.getStatus() == Message.STATUS_SEND_RECEIVED
+					&& message.getTimeSent() < displayedMessage.getTimeSent()) {
+				mXmppConnectionService.markMessage(message, Message.STATUS_SEND_DISPLAYED);
+				message = message.prev();
+			}
 		} else if (from != null
 				&& packet.hasChild("received", "urn:xmpp:chat-markers:0")) {
 			String id = packet.findChild("received", "urn:xmpp:chat-markers:0")
@@ -298,47 +436,18 @@ public class MessageParser extends AbstractParser implements
 			updateLastseen(packet, account, false);
 			mXmppConnectionService.markMessage(account, from.toBareJid(),
 					id, Message.STATUS_SEND_RECEIVED);
-		} else if (packet.hasChild("x", "http://jabber.org/protocol/muc#user")) {
-			Element x = packet.findChild("x",
-					"http://jabber.org/protocol/muc#user");
-			if (x.hasChild("invite")) {
-				Conversation conversation = mXmppConnectionService
-						.findOrCreateConversation(account,
-								packet.getAttributeAsJid("from"), true);
-				if (!conversation.getMucOptions().online()) {
-					if (x.hasChild("password")) {
-						Element password = x.findChild("password");
-						conversation.getMucOptions().setPassword(
-								password.getContent());
-						mXmppConnectionService.databaseBackend
-								.updateConversation(conversation);
-					}
-					mXmppConnectionService.joinMuc(conversation);
-					mXmppConnectionService.updateConversationUi();
-				}
-			}
-		} else if (packet.hasChild("x", "jabber:x:conference")) {
-			Element x = packet.findChild("x", "jabber:x:conference");
-            Jid jid;
-            try {
-                jid = Jid.fromString(x.getAttribute("jid"));
-            } catch (InvalidJidException e) {
-                jid = null;
-            }
-            String password = x.getAttribute("password");
-			if (jid != null) {
-				Conversation conversation = mXmppConnectionService
-						.findOrCreateConversation(account, jid, true);
-				if (!conversation.getMucOptions().online()) {
-					if (password != null) {
-						conversation.getMucOptions().setPassword(password);
-						mXmppConnectionService.databaseBackend
-								.updateConversation(conversation);
-					}
-					mXmppConnectionService.joinMuc(conversation);
-					mXmppConnectionService.updateConversationUi();
-				}
-			}
+		}
+	}
+
+	private Element extractInvite(Element message) {
+		Element x = message.findChild("x","http://jabber.org/protocol/muc#user");
+		if (x == null) {
+			x = message.findChild("x","jabber:x:conference");
+		}
+		if (x != null && x.hasChild("invite")) {
+			return x;
+		} else {
+			return null;
 		}
 	}
 
@@ -415,7 +524,6 @@ public class MessageParser extends AbstractParser implements
 	public void onMessagePacketReceived(Account account, MessagePacket packet) {
 		Message message = null;
 		this.parseNick(packet, account);
-
 		if ((packet.getType() == MessagePacket.TYPE_CHAT || packet.getType() == MessagePacket.TYPE_NORMAL)) {
 			if ((packet.getBody() != null)
 					&& (packet.getBody().startsWith("?OTR"))) {
@@ -423,9 +531,7 @@ public class MessageParser extends AbstractParser implements
 				if (message != null) {
 					message.markUnread();
 				}
-			} else if (packet.hasChild("body")
-					&& !(packet.hasChild("x",
-					"http://jabber.org/protocol/muc#user"))) {
+			} else if (packet.hasChild("body") && extractInvite(packet) == null) {
 				message = this.parseChat(packet, account);
 				if (message != null) {
 					message.markUnread();
@@ -436,12 +542,22 @@ public class MessageParser extends AbstractParser implements
 				if (message != null) {
 					if (message.getStatus() == Message.STATUS_SEND) {
 						account.activateGracePeriod();
-						mXmppConnectionService.markRead(
-								message.getConversation(), false);
+						mXmppConnectionService.markRead(message.getConversation());
 					} else {
 						message.markUnread();
 					}
 				}
+			} else if (packet.hasChild("result","urn:xmpp:mam:0")) {
+				message = parseMamMessage(packet, account);
+				if (message != null) {
+					Conversation conversation = message.getConversation();
+					conversation.add(message);
+					mXmppConnectionService.databaseBackend.createMessage(message);
+				}
+				return;
+			} else if (packet.hasChild("fin","urn:xmpp:mam:0")) {
+				Element fin = packet.findChild("fin","urn:xmpp:mam:0");
+				mXmppConnectionService.getMessageArchiveService().processFin(fin);
 			} else {
 				parseNonMessage(packet, account);
 			}
@@ -451,8 +567,7 @@ public class MessageParser extends AbstractParser implements
 				if (message.getStatus() == Message.STATUS_RECEIVED) {
 					message.markUnread();
 				} else {
-					mXmppConnectionService.markRead(message.getConversation(),
-							false);
+					mXmppConnectionService.markRead(message.getConversation());
 					account.activateGracePeriod();
 				}
 			}
@@ -483,12 +598,16 @@ public class MessageParser extends AbstractParser implements
 		}
 		Conversation conversation = message.getConversation();
 		conversation.add(message);
+		if (account.getXmppConnection() != null && account.getXmppConnection().getFeatures().advancedStreamFeaturesLoaded()) {
+			if (conversation.setLastMessageTransmitted(System.currentTimeMillis())) {
+				mXmppConnectionService.updateConversation(conversation);
+			}
+		}
 
 		if (message.getStatus() == Message.STATUS_RECEIVED
 				&& conversation.getOtrSession() != null
 				&& !conversation.getOtrSession().getSessionID().getUserID()
 				.equals(message.getCounterpart().getResourcepart())) {
-			Log.d(Config.LOGTAG, "ending because of reasons");
 			conversation.endOtrIfNeeded();
 		}
 
@@ -498,10 +617,10 @@ public class MessageParser extends AbstractParser implements
 				mXmppConnectionService.databaseBackend.createMessage(message);
 			}
 		}
-		if (message.trusted() && message.bodyContainsDownloadable()) {
-			this.mXmppConnectionService.getHttpConnectionManager()
-					.createNewConnection(message);
-		} else {
+		final HttpConnectionManager manager = this.mXmppConnectionService.getHttpConnectionManager();
+		if (message.trusted() && message.bodyContainsDownloadable() && manager.getAutoAcceptFileSize() > 0) {
+			manager.createNewConnection(message);
+		} else if (!message.isRead()) {
 			mXmppConnectionService.getNotificationService().push(message);
 		}
 		mXmppConnectionService.updateConversationUi();

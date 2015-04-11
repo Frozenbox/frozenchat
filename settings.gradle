@@ -1,5 +1,4 @@
 include ':libs:MemorizingTrustManager'
-include ':libs:minidns'
 include ':libs:openpgp-api-lib'
 
-rootProject.name = 'FrozenChat'
+rootProject.name = 'Frozenchat'

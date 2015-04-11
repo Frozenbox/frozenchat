@@ -2,12 +2,19 @@ package org.frozenbox.frozenchat.utils;
 
 import java.security.SecureRandom;
 import java.text.Normalizer;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
 
-public class CryptoHelper {
+import org.frozenbox.frozenchat.Config;
+
+public final class CryptoHelper {
 	public static final String FILETRANSFER = "?FILETRANSFERv1:";
-	final protected static char[] hexArray = "0123456789abcdef".toCharArray();
-	final protected static char[] vowels = "aeiou".toCharArray();
-	final protected static char[] consonants = "bcdfghjklmnpqrstvwxyz".toCharArray();
+	private final static char[] hexArray = "0123456789abcdef".toCharArray();
+	private final static char[] vowels = "aeiou".toCharArray();
+	private final static char[] consonants = "bcdfghjklmnpqrstvwxyz".toCharArray();
 	final public static byte[] ONE = new byte[] { 0, 0, 0, 1 };
 
 	public static String bytesToHex(byte[] bytes) {
@@ -45,7 +52,7 @@ public class CryptoHelper {
 		return randomWord(3, random) + "." + randomWord(7, random);
 	}
 
-	protected static String randomWord(int lenght, SecureRandom random) {
+	private static String randomWord(int lenght, SecureRandom random) {
 		StringBuilder builder = new StringBuilder(lenght);
 		for (int i = 0; i < lenght; ++i) {
 			if (i % 2 == 0) {
@@ -90,5 +97,28 @@ public class CryptoHelper {
 		builder.insert(26, " ");
 		builder.insert(35, " ");
 		return builder.toString();
+	}
+
+	public static String[] getOrderedCipherSuites(final String[] platformSupportedCipherSuites) {
+		final Collection<String> cipherSuites = new LinkedHashSet<>(Arrays.asList(Config.ENABLED_CIPHERS));
+		final List<String> platformCiphers = Arrays.asList(platformSupportedCipherSuites);
+		cipherSuites.retainAll(platformCiphers);
+		cipherSuites.addAll(platformCiphers);
+		filterWeakCipherSuites(cipherSuites);
+		return cipherSuites.toArray(new String[cipherSuites.size()]);
+	}
+
+	private static void filterWeakCipherSuites(final Collection<String> cipherSuites) {
+		final Iterator<String> it = cipherSuites.iterator();
+		while (it.hasNext()) {
+			String cipherName = it.next();
+			// remove all ciphers with no or very weak encryption or no authentication
+			for (String weakCipherPattern : Config.WEAK_CIPHER_PATTERNS) {
+				if (cipherName.contains(weakCipherPattern)) {
+					it.remove();
+					break;
+				}
+			}
+		}
 	}
 }

@@ -1,34 +1,21 @@
 package org.frozenbox.frozenchat.xmpp.stanzas;
 
+import org.frozenbox.frozenchat.entities.Account;
 import org.frozenbox.frozenchat.xml.Element;
-import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
 public class AbstractStanza extends Element {
 
-	protected AbstractStanza(String name) {
+	protected AbstractStanza(final String name) {
 		super(name);
 	}
 
 	public Jid getTo() {
-		try {
-			return Jid.fromString(getAttribute("to"));
-		} catch (final InvalidJidException e) {
-			return null;
-		}
+		return getAttributeAsJid("to");
 	}
 
 	public Jid getFrom() {
-		String from = getAttribute("from");
-		if (from == null) {
-			return null;
-		} else {
-			try {
-				return Jid.fromString(from);
-			} catch (final InvalidJidException e) {
-				return null;
-			}
-		}
+		return getAttributeAsJid("from");
 	}
 
 	public String getId() {
@@ -49,5 +36,19 @@ public class AbstractStanza extends Element {
 
 	public void setId(final String id) {
 		setAttribute("id", id);
+	}
+
+	public boolean fromServer(final Account account) {
+		return getFrom() == null
+			|| getFrom().equals(account.getServer())
+			|| getFrom().equals(account.getJid().toBareJid())
+			|| getFrom().equals(account.getJid());
+	}
+
+	public boolean toServer(final Account account) {
+		return getTo() == null
+			|| getTo().equals(account.getServer())
+			|| getTo().equals(account.getJid().toBareJid())
+			|| getTo().equals(account.getJid());
 	}
 }

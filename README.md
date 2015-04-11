@@ -11,11 +11,12 @@ android client for our XMPP server (chat.frozenbox.org)
 
 ## Design principles
 
-* Beauty and security are the key points of this project
+* Be as beautiful and easy to use as possible without sacrificing security or
+  privacy
 * Rely on existing, well established protocols (XMPP)
-* It works with any XMPP server
-* It is compatible with Google Talk services
+* Do not require a Google Account or specifically Google Cloud Messaging (GCM)
 * Require as few permissions as possible
+
 
 ## Features
 
@@ -33,9 +34,9 @@ android client for our XMPP server (chat.frozenbox.org)
 
 ### XMPP Features
 
-FrozenChat works with every XMPP server out there. However XMPP is an
+Frozenchat works with every XMPP server out there. However XMPP is an
 extensible protocol. These extensions are standardized as well in so called
-XEP's. FrozenChat supports a couple of these to make the overall user
+XEP's. Frozenchat supports a couple of these to make the overall user
 experience better. There is a chance that your current XMPP server does not
 support these extensions; therefore to get the most out of Frozenchat you
 should consider either switching to an XMPP server that does or — even better —
@@ -43,7 +44,6 @@ run your own XMPP server for you and your friends. These XEP's are:
 
 * XEP-0065: SOCKS5 Bytestreams (or mod_proxy65). Will be used to transfer
   files if both parties are behind a firewall (NAT).
-* XEP-0138: Stream Compression saves bandwidth
 * XEP-0163: Personal Eventing Protocol for avatars
 * XEP-0198: Stream Management allows XMPP to survive small network outages and
   changes of the underlying TCP connection.
@@ -51,9 +51,14 @@ run your own XMPP server for you and your friends. These XEP's are:
   your desktop client and thus allows you to switch seamlessly from your mobile
   client to your desktop client and back within one conversation.
 * XEP-0237: Roster Versioning mainly to save bandwidth on poor mobile connections
-* XEP-0352: Client State Indication let the server know whether or not
+* XEP-0313: Message Archive Management synchronize message history with the
+  server. Catch up with messages that were sent while Frozenchat was
+  offline.
+* XEP-0352: Client State Indication lets the server know whether or not
   Frozenchat is in the background. Allows the server to save bandwidth by
   withholding unimportant packages.
+* XEP-0191: Blocking command lets you blacklist spammers or block contacts
+  without removing them from your roster.
 
 
 
@@ -62,6 +67,8 @@ run your own XMPP server for you and your friends. These XEP's are:
 ### FrozenChat Developers
 
 * Lorenzo "EclipseSpark" Faletra
+
+* Davide TheZero
 
 * Frozenbox Dev Team
 
@@ -82,17 +89,14 @@ run your own XMPP server for you and your friends. These XEP's are:
 * [Alethea Butler](https://github.com/alethea)
 * [M. Dietrich](https://github.com/emdete)
 * [betheg](https://github.com/betheg)
+* [Sam Whited](https://github.com/SamWhited)
 
-#### Original Translations
+#### Logo
+* [Ilia Rostovtsev](https://github.com/qooob) (Progress)
+* [Diego Turtulici](http://efesto.eigenlab.org/~diesys) (Original)
 
-* [Sergio Cárdenas](https://github.com/kruks23) (Spanish)
-* [Benoit Bouvarel](https://github.com/BenoitBouvarel) (French)
-* [Daniel Gultsch](https://github.com/iNPUTmice) (German)
-* [Aitor Beriain](https://github.com/beriain) (Basque)
-* [Ilia Rostovtsev](https://github.com/qooob) (Russian)
-* [Jelmer Vernooij](https://github.com/jelmer) (Dutch)
-* [Anders Sandblad](https://github.com/andersruneson) (Swedish)
-* [Aizaz AZ](http://www.linkedin.com/in/aizazhaider) (Chinese)
+#### Translations
+Translations are managed on [Transifex](https://www.transifex.com/projects/p/conversations/)
 
 ## FAQ
 

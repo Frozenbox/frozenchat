@@ -12,6 +12,7 @@ import org.frozenbox.frozenchat.entities.Account;
 import org.frozenbox.frozenchat.entities.Message;
 import org.frozenbox.frozenchat.services.AbstractConnectionManager;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
+import org.frozenbox.frozenchat.utils.Xmlns;
 import org.frozenbox.frozenchat.xml.Element;
 import org.frozenbox.frozenchat.xmpp.OnIqPacketReceived;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
@@ -46,7 +47,7 @@ public class JingleConnectionManager extends AbstractConnectionManager {
 					return;
 				}
 			}
-			IqPacket response = packet.generateRespone(IqPacket.TYPE_ERROR);
+			IqPacket response = packet.generateResponse(IqPacket.TYPE.ERROR);
 			Element error = response.addChild("error");
 			error.setAttribute("type", "cancel");
 			error.addChild("item-not-found",
@@ -80,49 +81,37 @@ public class JingleConnectionManager extends AbstractConnectionManager {
 			return;
 		}
 		if (!this.primaryCandidates.containsKey(account.getJid().toBareJid())) {
-			String xmlns = "http://jabber.org/protocol/bytestreams";
-			final String proxy = account.getXmppConnection()
-					.findDiscoItemByFeature(xmlns);
+			final String proxy = account.getXmppConnection().findDiscoItemByFeature(Xmlns.BYTE_STREAMS);
 			if (proxy != null) {
-				IqPacket iq = new IqPacket(IqPacket.TYPE_GET);
+				IqPacket iq = new IqPacket(IqPacket.TYPE.GET);
 				iq.setAttribute("to", proxy);
-				iq.query(xmlns);
-				account.getXmppConnection().sendIqPacket(iq,
-						new OnIqPacketReceived() {
+				iq.query(Xmlns.BYTE_STREAMS);
+				account.getXmppConnection().sendIqPacket(iq,new OnIqPacketReceived() {
 
-							@Override
-							public void onIqPacketReceived(Account account,
-									IqPacket packet) {
-								Element streamhost = packet
-										.query()
-										.findChild("streamhost",
-												"http://jabber.org/protocol/bytestreams");
-								if (streamhost != null) {
-									JingleCandidate candidate = new JingleCandidate(
-											nextRandomId(), true);
-									candidate.setHost(streamhost
-											.getAttribute("host"));
-									candidate.setPort(Integer
-											.parseInt(streamhost
-													.getAttribute("port")));
-									candidate
-											.setType(JingleCandidate.TYPE_PROXY);
-                                    try {
-                                        candidate.setJid(Jid.fromString(proxy));
-                                    } catch (final InvalidJidException e) {
-                                        candidate.setJid(null);
-                                    }
-                                    candidate.setPriority(655360 + 65535);
-									primaryCandidates.put(account.getJid().toBareJid(),
-											candidate);
-									listener.onPrimaryCandidateFound(true,
-											candidate);
-								} else {
-									listener.onPrimaryCandidateFound(false,
-											null);
-								}
+					@Override
+					public void onIqPacketReceived(Account account, IqPacket packet) {
+						Element streamhost = packet.query().findChild("streamhost",Xmlns.BYTE_STREAMS);
+						final String host = streamhost == null ? null : streamhost.getAttribute("host");
+						final String port = streamhost == null ? null : streamhost.getAttribute("port");
+						if (host != null && port != null) {
+							try {
+								JingleCandidate candidate = new JingleCandidate(nextRandomId(), true);
+								candidate.setHost(host);
+								candidate.setPort(Integer.parseInt(port));
+								candidate.setType(JingleCandidate.TYPE_PROXY);
+								candidate.setJid(Jid.fromString(proxy));
+								candidate.setPriority(655360 + 65535);
+								primaryCandidates.put(account.getJid().toBareJid(),candidate);
+								listener.onPrimaryCandidateFound(true,candidate);
+							} catch (final NumberFormatException | InvalidJidException e) {
+								listener.onPrimaryCandidateFound(false,null);
+								return;
 							}
-						});
+						} else {
+							listener.onPrimaryCandidateFound(false,null);
+						}
+					}
+				});
 			} else {
 				listener.onPrimaryCandidateFound(false, null);
 			}
@@ -141,12 +130,10 @@ public class JingleConnectionManager extends AbstractConnectionManager {
 		String sid = null;
 		Element payload = null;
 		if (packet.hasChild("open", "http://jabber.org/protocol/ibb")) {
-			payload = packet
-					.findChild("open", "http://jabber.org/protocol/ibb");
+			payload = packet.findChild("open", "http://jabber.org/protocol/ibb");
 			sid = payload.getAttribute("sid");
 		} else if (packet.hasChild("data", "http://jabber.org/protocol/ibb")) {
-			payload = packet
-					.findChild("data", "http://jabber.org/protocol/ibb");
+			payload = packet.findChild("data", "http://jabber.org/protocol/ibb");
 			sid = payload.getAttribute("sid");
 		}
 		if (sid != null) {
@@ -161,10 +148,9 @@ public class JingleConnectionManager extends AbstractConnectionManager {
 					}
 				}
 			}
-			Log.d(Config.LOGTAG,
-					"couldnt deliver payload: " + payload.toString());
+			Log.d(Config.LOGTAG,"couldn't deliver payload: " + payload.toString());
 		} else {
-			Log.d(Config.LOGTAG, "no sid found in incomming ibb packet");
+			Log.d(Config.LOGTAG, "no sid found in incoming ibb packet");
 		}
 	}
 

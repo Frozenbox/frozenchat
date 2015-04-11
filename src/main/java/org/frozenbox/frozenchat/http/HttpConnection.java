@@ -1,7 +1,6 @@
 package org.frozenbox.frozenchat.http;
 
 import android.content.Intent;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.SystemClock;
 
@@ -15,11 +14,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
 import org.frozenbox.frozenchat.Config;
@@ -66,14 +67,22 @@ public class HttpConnection implements Downloadable {
 		this.message.setDownloadable(this);
 		try {
 			mUrl = new URL(message.getBody());
-			String path = mUrl.getPath();
-			if (path != null && (path.endsWith(".pgp") || path.endsWith(".gpg"))) {
+			String[] parts = mUrl.getPath().toLowerCase().split("\\.");
+			String lastPart = parts.length >= 1 ? parts[parts.length - 1] : null;
+			String secondToLast = parts.length >= 2 ? parts[parts.length -2] : null;
+			if ("pgp".equals(lastPart) || "gpg".equals(lastPart)) {
 				this.message.setEncryption(Message.ENCRYPTION_PGP);
 			} else if (message.getEncryption() != Message.ENCRYPTION_OTR) {
 				this.message.setEncryption(Message.ENCRYPTION_NONE);
 			}
-			this.file = mXmppConnectionService.getFileBackend().getFile(
-					message, false);
+			String extension;
+			if (Arrays.asList(VALID_CRYPTO_EXTENSIONS).contains(lastPart)) {
+				extension = secondToLast;
+			} else {
+				extension = lastPart;
+			}
+			message.setRelativeFilePath(message.getUuid()+"."+extension);
+			this.file = mXmppConnectionService.getFileBackend().getFile(message, false);
 			String reference = mUrl.getRef();
 			if (reference != null && reference.length() == 96) {
 				this.file.setKey(CryptoHelper.hexToBytes(reference));
@@ -82,7 +91,7 @@ public class HttpConnection implements Downloadable {
 			if (this.message.getEncryption() == Message.ENCRYPTION_OTR
 					&& this.file.getKey() == null) {
 				this.message.setEncryption(Message.ENCRYPTION_NONE);
-			}
+					}
 			checkFileSize(false);
 		} catch (MalformedURLException e) {
 			this.cancel();
@@ -116,33 +125,39 @@ public class HttpConnection implements Downloadable {
 		mXmppConnectionService.updateConversationUi();
 	}
 
-	private void setupTrustManager(HttpsURLConnection connection,
-								   boolean interactive) {
-		X509TrustManager trustManager;
-		HostnameVerifier hostnameVerifier;
+	private void setupTrustManager(final HttpsURLConnection connection,
+			final boolean interactive) {
+		final X509TrustManager trustManager;
+		final HostnameVerifier hostnameVerifier;
 		if (interactive) {
 			trustManager = mXmppConnectionService.getMemorizingTrustManager();
 			hostnameVerifier = mXmppConnectionService
-					.getMemorizingTrustManager().wrapHostnameVerifier(
-							new StrictHostnameVerifier());
+				.getMemorizingTrustManager().wrapHostnameVerifier(
+						new StrictHostnameVerifier());
 		} else {
 			trustManager = mXmppConnectionService.getMemorizingTrustManager()
-					.getNonInteractive();
+				.getNonInteractive();
 			hostnameVerifier = mXmppConnectionService
-					.getMemorizingTrustManager()
-					.wrapHostnameVerifierNonInteractive(
-							new StrictHostnameVerifier());
+				.getMemorizingTrustManager()
+				.wrapHostnameVerifierNonInteractive(
+						new StrictHostnameVerifier());
 		}
 		try {
-			SSLContext sc = SSLContext.getInstance("TLS");
+			final SSLContext sc = SSLContext.getInstance("TLS");
 			sc.init(null, new X509TrustManager[]{trustManager},
 					mXmppConnectionService.getRNG());
-			connection.setSSLSocketFactory(sc.getSocketFactory());
+
+			final SSLSocketFactory sf = sc.getSocketFactory();
+			final String[] cipherSuites = CryptoHelper.getOrderedCipherSuites(
+					sf.getSupportedCipherSuites());
+			if (cipherSuites.length > 0) {
+				sc.getDefaultSSLParameters().setCipherSuites(cipherSuites);
+
+			}
+
+			connection.setSSLSocketFactory(sf);
 			connection.setHostnameVerifier(hostnameVerifier);
-		} catch (KeyManagementException e) {
-			return;
-		} catch (NoSuchAlgorithmException e) {
-			return;
+		} catch (final KeyManagementException | NoSuchAlgorithmException ignored) {
 		}
 	}
 
@@ -180,24 +195,24 @@ public class HttpConnection implements Downloadable {
 		}
 
 		private long retrieveFileSize() throws IOException,
-				SSLHandshakeException {
-			changeStatus(STATUS_CHECKING);
-			HttpURLConnection connection = (HttpURLConnection) mUrl
-					.openConnection();
-			connection.setRequestMethod("HEAD");
-			if (connection instanceof HttpsURLConnection) {
-				setupTrustManager((HttpsURLConnection) connection, interactive);
-			}
-			connection.connect();
-			String contentLength = connection.getHeaderField("Content-Length");
-			if (contentLength == null) {
-				throw new IOException();
-			}
-			try {
-				return Long.parseLong(contentLength, 10);
-			} catch (NumberFormatException e) {
-				throw new IOException();
-			}
+						SSLHandshakeException {
+							changeStatus(STATUS_CHECKING);
+							HttpURLConnection connection = (HttpURLConnection) mUrl
+								.openConnection();
+							connection.setRequestMethod("HEAD");
+							if (connection instanceof HttpsURLConnection) {
+								setupTrustManager((HttpsURLConnection) connection, interactive);
+							}
+							connection.connect();
+							String contentLength = connection.getHeaderField("Content-Length");
+							if (contentLength == null) {
+								throw new IOException();
+							}
+							try {
+								return Long.parseLong(contentLength, 10);
+							} catch (NumberFormatException e) {
+								throw new IOException();
+							}
 		}
 
 	}
@@ -226,7 +241,7 @@ public class HttpConnection implements Downloadable {
 
 		private void download() throws SSLHandshakeException, IOException {
 			HttpURLConnection connection = (HttpURLConnection) mUrl
-					.openConnection();
+				.openConnection();
 			if (connection instanceof HttpsURLConnection) {
 				setupTrustManager((HttpsURLConnection) connection, interactive);
 			}

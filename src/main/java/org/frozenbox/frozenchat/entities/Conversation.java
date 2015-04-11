@@ -2,10 +2,8 @@ package org.frozenbox.frozenchat.entities;
 
 import android.content.ContentValues;
 import android.database.Cursor;
-import android.os.SystemClock;
 
 import net.java.otr4j.OtrException;
-import net.java.otr4j.crypto.OtrCryptoEngineImpl;
 import net.java.otr4j.crypto.OtrCryptoException;
 import net.java.otr4j.session.SessionID;
 import net.java.otr4j.session.SessionImpl;
@@ -16,13 +14,16 @@ import org.json.JSONObject;
 
 import java.security.interfaces.DSAPublicKey;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
-import org.frozenbox.frozenchat.services.XmppConnectionService;
+import org.frozenbox.frozenchat.Config;
+import org.frozenbox.frozenchat.xmpp.chatstate.ChatState;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
-public class Conversation extends AbstractEntity {
+public class Conversation extends AbstractEntity implements Blockable {
 	public static final String TABLENAME = "conversations";
 
 	public static final int STATUS_AVAILABLE = 0;
@@ -44,6 +45,7 @@ public class Conversation extends AbstractEntity {
 	public static final String ATTRIBUTE_NEXT_ENCRYPTION = "next_encryption";
 	public static final String ATTRIBUTE_MUC_PASSWORD = "muc_password";
 	public static final String ATTRIBUTE_MUTED_TILL = "muted_till";
+	public static final String ATTRIBUTE_LAST_MESSAGE_TRANSMITTED = "last_message_transmitted";
 
 	private String name;
 	private String contactUuid;
@@ -73,6 +75,179 @@ public class Conversation extends AbstractEntity {
 
 	private Bookmark bookmark;
 
+	private boolean messagesLeftOnServer = true;
+	private ChatState mOutgoingChatState = Config.DEFAULT_CHATSTATE;
+	private ChatState mIncomingChatState = Config.DEFAULT_CHATSTATE;
+	private String mLastReceivedOtrMessageId = null;
+
+	public boolean hasMessagesLeftOnServer() {
+		return messagesLeftOnServer;
+	}
+
+	public void setHasMessagesLeftOnServer(boolean value) {
+		this.messagesLeftOnServer = value;
+	}
+
+	public Message findUnsentMessageWithUuid(String uuid) {
+		synchronized(this.messages) {
+			for (final Message message : this.messages) {
+				final int s = message.getStatus();
+				if ((s == Message.STATUS_UNSEND || s == Message.STATUS_WAITING) && message.getUuid().equals(uuid)) {
+					return message;
+				}
+			}
+		}
+		return null;
+	}
+
+	public void findWaitingMessages(OnMessageFound onMessageFound) {
+		synchronized (this.messages) {
+			for(Message message : this.messages) {
+				if (message.getStatus() == Message.STATUS_WAITING) {
+					onMessageFound.onMessageFound(message);
+				}
+			}
+		}
+	}
+
+	public void findMessagesWithFiles(final OnMessageFound onMessageFound) {
+		synchronized (this.messages) {
+			for (final Message message : this.messages) {
+				if ((message.getType() == Message.TYPE_IMAGE || message.getType() == Message.TYPE_FILE)
+						&& message.getEncryption() != Message.ENCRYPTION_PGP) {
+					onMessageFound.onMessageFound(message);
+						}
+			}
+		}
+	}
+
+	public Message findMessageWithFileAndUuid(final String uuid) {
+		synchronized (this.messages) {
+			for (final Message message : this.messages) {
+				if ((message.getType() == Message.TYPE_IMAGE || message.getType() == Message.TYPE_FILE)
+						&& message.getEncryption() != Message.ENCRYPTION_PGP
+						&& message.getUuid().equals(uuid)) {
+					return message;
+				}
+			}
+		}
+		return null;
+	}
+
+	public void clearMessages() {
+		synchronized (this.messages) {
+			this.messages.clear();
+		}
+	}
+
+	public boolean setIncomingChatState(ChatState state) {
+		if (this.mIncomingChatState == state) {
+			return false;
+		}
+		this.mIncomingChatState = state;
+		return true;
+	}
+
+	public ChatState getIncomingChatState() {
+		return this.mIncomingChatState;
+	}
+
+	public boolean setOutgoingChatState(ChatState state) {
+		if (mode == MODE_MULTI) {
+			return false;
+		}
+		if (this.mOutgoingChatState != state) {
+			this.mOutgoingChatState = state;
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public ChatState getOutgoingChatState() {
+		return this.mOutgoingChatState;
+	}
+
+	public void trim() {
+		synchronized (this.messages) {
+			final int size = messages.size();
+			final int maxsize = Config.PAGE_SIZE * Config.MAX_NUM_PAGES;
+			if (size > maxsize) {
+				this.messages.subList(0, size - maxsize).clear();
+			}
+		}
+	}
+
+	public void findUnsentMessagesWithOtrEncryption(OnMessageFound onMessageFound) {
+		synchronized (this.messages) {
+			for (Message message : this.messages) {
+				if ((message.getStatus() == Message.STATUS_UNSEND || message.getStatus() == Message.STATUS_WAITING)
+						&& (message.getEncryption() == Message.ENCRYPTION_OTR)) {
+					onMessageFound.onMessageFound(message);
+						}
+			}
+		}
+	}
+
+	public void findUnsentTextMessages(OnMessageFound onMessageFound) {
+		synchronized (this.messages) {
+			for (Message message : this.messages) {
+				if (message.getType() != Message.TYPE_IMAGE
+						&& message.getStatus() == Message.STATUS_UNSEND) {
+					onMessageFound.onMessageFound(message);
+						}
+			}
+		}
+	}
+
+	public Message findSentMessageWithUuid(String uuid) {
+		synchronized (this.messages) {
+			for (Message message : this.messages) {
+				if (uuid.equals(message.getUuid())
+						|| (message.getStatus() >= Message.STATUS_SEND && uuid
+							.equals(message.getRemoteMsgId()))) {
+					return message;
+							}
+			}
+		}
+		return null;
+	}
+
+	public void populateWithMessages(final List<Message> messages) {
+		synchronized (this.messages) {
+			messages.clear();
+			messages.addAll(this.messages);
+		}
+	}
+
+	@Override
+	public boolean isBlocked() {
+		return getContact().isBlocked();
+	}
+
+	@Override
+	public boolean isDomainBlocked() {
+		return getContact().isDomainBlocked();
+	}
+
+	@Override
+	public Jid getBlockedJid() {
+		return getContact().getBlockedJid();
+	}
+
+	public String getLastReceivedOtrMessageId() {
+		return this.mLastReceivedOtrMessageId;
+	}
+
+	public void setLastReceivedOtrMessageId(String id) {
+		this.mLastReceivedOtrMessageId = id;
+	}
+
+
+	public interface OnMessageFound {
+		public void onMessageFound(final Message message);
+	}
+
 	public Conversation(final String name, final Account account, final Jid contactJid,
 			final int mode) {
 		this(java.util.UUID.randomUUID().toString(), name, null, account
@@ -99,18 +274,11 @@ public class Conversation extends AbstractEntity {
 		}
 	}
 
-	public List<Message> getMessages() {
-		return messages;
+	public boolean isRead() {
+		return (this.messages.size() == 0) || this.messages.get(this.messages.size() - 1).isRead();
 	}
 
-	public boolean isRead() {
-        return (this.messages == null) || (this.messages.size() == 0) || this.messages.get(this.messages.size() - 1).isRead();
-    }
-
 	public void markRead() {
-		if (this.messages == null) {
-			return;
-		}
 		for (int i = this.messages.size() - 1; i >= 0; --i) {
 			if (messages.get(i).isRead()) {
 				break;
@@ -120,9 +288,6 @@ public class Conversation extends AbstractEntity {
 	}
 
 	public Message getLatestMarkableMessage() {
-		if (this.messages == null) {
-			return null;
-		}
 		for (int i = this.messages.size() - 1; i >= 0; --i) {
 			if (this.messages.get(i).getStatus() <= Message.STATUS_RECEIVED
 					&& this.messages.get(i).markable) {
@@ -131,13 +296,13 @@ public class Conversation extends AbstractEntity {
 				} else {
 					return this.messages.get(i);
 				}
-			}
+					}
 		}
 		return null;
 	}
 
 	public Message getLatestMessage() {
-		if ((this.messages == null) || (this.messages.size() == 0)) {
+		if (this.messages.size() == 0) {
 			Message message = new Message(this, "", Message.ENCRYPTION_NONE);
 			message.setTime(getCreated());
 			return message;
@@ -159,16 +324,12 @@ public class Conversation extends AbstractEntity {
 				if (generatedName != null) {
 					return generatedName;
 				} else {
-					return getContactJid().getLocalpart();
+					return getJid().getLocalpart();
 				}
 			}
 		} else {
 			return this.getContact().getDisplayName();
 		}
-	}
-
-	public String getProfilePhotoString() {
-		return this.getContact().getProfilePhoto();
 	}
 
 	public String getAccountUuid() {
@@ -183,11 +344,12 @@ public class Conversation extends AbstractEntity {
 		return this.account.getRoster().getContact(this.contactJid);
 	}
 
-	public void setAccount(Account account) {
+	public void setAccount(final Account account) {
 		this.account = account;
 	}
 
-	public Jid getContactJid() {
+	@Override
+	public Jid getJid() {
 		return this.contactJid;
 	}
 
@@ -214,14 +376,14 @@ public class Conversation extends AbstractEntity {
 	}
 
 	public static Conversation fromCursor(Cursor cursor) {
-        Jid jid;
-        try {
-            jid = Jid.fromString(cursor.getString(cursor.getColumnIndex(CONTACTJID)));
-        } catch (final InvalidJidException e) {
-            // Borked DB..
-            jid = null;
-        }
-        return new Conversation(cursor.getString(cursor.getColumnIndex(UUID)),
+		Jid jid;
+		try {
+			jid = Jid.fromString(cursor.getString(cursor.getColumnIndex(CONTACTJID)), true);
+		} catch (final InvalidJidException e) {
+			// Borked DB..
+			jid = null;
+		}
+		return new Conversation(cursor.getString(cursor.getColumnIndex(UUID)),
 				cursor.getString(cursor.getColumnIndex(NAME)),
 				cursor.getString(cursor.getColumnIndex(CONTACT)),
 				cursor.getString(cursor.getColumnIndex(ACCOUNT)),
@@ -248,9 +410,9 @@ public class Conversation extends AbstractEntity {
 		if (this.otrSession != null) {
 			return this.otrSession;
 		} else {
-            final SessionID sessionId = new SessionID(this.getContactJid().toBareJid().toString(),
-                    presence,
-                    "xmpp");
+			final SessionID sessionId = new SessionID(this.getJid().toBareJid().toString(),
+					presence,
+					"xmpp");
 			this.otrSession = new SessionImpl(sessionId, getAccount().getOtrEngine());
 			try {
 				if (sendStart) {
@@ -289,7 +451,7 @@ public class Conversation extends AbstractEntity {
 			} catch (OtrException e) {
 				this.resetOtrSession();
 			}
-		}
+				}
 	}
 
 	public boolean endOtrIfNeeded() {
@@ -316,30 +478,29 @@ public class Conversation extends AbstractEntity {
 		return this.otrSession != null;
 	}
 
-	public String getOtrFingerprint() {
+	public synchronized String getOtrFingerprint() {
 		if (this.otrFingerprint == null) {
 			try {
-				if (getOtrSession() == null) {
-					return "";
+				if (getOtrSession() == null || getOtrSession().getSessionStatus() != SessionStatus.ENCRYPTED) {
+					return null;
 				}
-				DSAPublicKey remotePubKey = (DSAPublicKey) getOtrSession()
-						.getRemotePublicKey();
-				StringBuilder builder = new StringBuilder(
-						new OtrCryptoEngineImpl().getFingerprint(remotePubKey));
-				builder.insert(8, " ");
-				builder.insert(17, " ");
-				builder.insert(26, " ");
-				builder.insert(35, " ");
-				this.otrFingerprint = builder.toString();
-			} catch (final OtrCryptoException ignored) {
-
+				DSAPublicKey remotePubKey = (DSAPublicKey) getOtrSession().getRemotePublicKey();
+				this.otrFingerprint = getAccount().getOtrEngine().getFingerprint(remotePubKey);
+			} catch (final OtrCryptoException | UnsupportedOperationException ignored) {
+				return null;
 			}
 		}
 		return this.otrFingerprint;
 	}
 
-	public void verifyOtrFingerprint() {
-		getContact().addOtrFingerprint(getOtrFingerprint());
+	public boolean verifyOtrFingerprint() {
+		final String fingerprint = getOtrFingerprint();
+		if (fingerprint != null) {
+			getContact().addOtrFingerprint(fingerprint);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	public boolean isOtrFingerprintVerified() {
@@ -451,12 +612,51 @@ public class Conversation extends AbstractEntity {
 	}
 
 	public boolean hasDuplicateMessage(Message message) {
-		for (int i = this.getMessages().size() - 1; i >= 0; --i) {
-			if (this.messages.get(i).equals(message)) {
-				return true;
+		synchronized (this.messages) {
+			for (int i = this.messages.size() - 1; i >= 0; --i) {
+				if (this.messages.get(i).equals(message)) {
+					return true;
+				}
 			}
 		}
 		return false;
+	}
+
+	public Message findSentMessageWithBody(String body) {
+		synchronized (this.messages) {
+			for (int i = this.messages.size() - 1; i >= 0; --i) {
+				Message message = this.messages.get(i);
+				if ((message.getStatus() == Message.STATUS_UNSEND || message.getStatus() == Message.STATUS_SEND) && message.getBody() != null && message.getBody().equals(body)) {
+					return message;
+				}
+			}
+			return null;
+		}
+	}
+
+	public boolean setLastMessageTransmitted(long value) {
+		long before = getLastMessageTransmitted();
+		if (value - before > 1000) {
+			this.setAttribute(ATTRIBUTE_LAST_MESSAGE_TRANSMITTED, String.valueOf(value));
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	public long getLastMessageTransmitted() {
+		long timestamp = getLongAttribute(ATTRIBUTE_LAST_MESSAGE_TRANSMITTED,0);
+		if (timestamp == 0) {
+			synchronized (this.messages) {
+				for(int i = this.messages.size() - 1; i >= 0; --i) {
+					Message message = this.messages.get(i);
+					if (message.getStatus() == Message.STATUS_RECEIVED) {
+						return message.getTimeSent();
+					}
+				}
+			}
+		}
+		return timestamp;
 	}
 
 	public void setMutedTill(long value) {
@@ -464,8 +664,7 @@ public class Conversation extends AbstractEntity {
 	}
 
 	public boolean isMuted() {
-		return SystemClock.elapsedRealtime() < this.getLongAttribute(
-				ATTRIBUTE_MUTED_TILL, 0);
+		return System.currentTimeMillis() < this.getLongAttribute(ATTRIBUTE_MUTED_TILL, 0);
 	}
 
 	public boolean setAttribute(String key, String value) {
@@ -521,6 +720,39 @@ public class Conversation extends AbstractEntity {
 	public void addAll(int index, List<Message> messages) {
 		synchronized (this.messages) {
 			this.messages.addAll(index, messages);
+		}
+	}
+
+	public void sort() {
+		synchronized (this.messages) {
+			Collections.sort(this.messages, new Comparator<Message>() {
+				@Override
+				public int compare(Message left, Message right) {
+					if (left.getTimeSent() < right.getTimeSent()) {
+						return -1;
+					} else if (left.getTimeSent() > right.getTimeSent()) {
+						return 1;
+					} else {
+						return 0;
+					}
+				}
+			});
+			for(Message message : this.messages) {
+				message.untie();
+			}
+		}
+	}
+
+	public int unreadCount() {
+		synchronized (this.messages) {
+			int count = 0;
+			for(int i = this.messages.size() - 1; i >= 0; --i) {
+				if (this.messages.get(i).isRead()) {
+					return count;
+				}
+				++count;
+			}
+			return count;
 		}
 	}
 

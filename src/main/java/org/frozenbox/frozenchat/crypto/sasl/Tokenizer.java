@@ -1,7 +1,5 @@
 package org.frozenbox.frozenchat.crypto.sasl;
 
-import android.util.Base64;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -18,6 +16,10 @@ public final class Tokenizer implements Iterator<String>, Iterable<String> {
 	public Tokenizer(final byte[] challenge) {
 		final String challengeString = new String(challenge);
 		parts = new ArrayList<>(Arrays.asList(challengeString.split(",")));
+		// Trim parts.
+		for (int i = 0; i < parts.size(); i++) {
+			parts.set(i, parts.get(i).trim());
+		}
 		index = 0;
 	}
 

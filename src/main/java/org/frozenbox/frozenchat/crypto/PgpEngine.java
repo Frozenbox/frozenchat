@@ -19,6 +19,7 @@ import org.frozenbox.frozenchat.entities.Contact;
 import org.frozenbox.frozenchat.entities.Conversation;
 import org.frozenbox.frozenchat.entities.DownloadableFile;
 import org.frozenbox.frozenchat.entities.Message;
+import org.frozenbox.frozenchat.http.HttpConnectionManager;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.ui.UiCallback;
 import android.app.PendingIntent;
@@ -56,9 +57,11 @@ public class PgpEngine {
 							if (message.getEncryption() == Message.ENCRYPTION_PGP) {
 								message.setBody(os.toString());
 								message.setEncryption(Message.ENCRYPTION_DECRYPTED);
-								if (message.trusted() && message.bodyContainsDownloadable()) {
-									mXmppConnectionService.getHttpConnectionManager()
-											.createNewConnection(message);
+								final HttpConnectionManager manager = mXmppConnectionService.getHttpConnectionManager();
+								if (message.trusted()
+										&& message.bodyContainsDownloadable()
+										&& manager.getAutoAcceptFileSize() > 0) {
+									manager.createNewConnection(message);
 								}
 								callback.success(message);
 							}

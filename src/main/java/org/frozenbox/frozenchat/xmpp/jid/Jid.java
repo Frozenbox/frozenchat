@@ -1,9 +1,12 @@
 package org.frozenbox.frozenchat.xmpp.jid;
 
+import android.util.LruCache;
+
 import net.java.otr4j.session.SessionID;
 
 import java.net.IDN;
 
+import org.frozenbox.frozenchat.Config;
 import gnu.inet.encoding.Stringprep;
 import gnu.inet.encoding.StringprepException;
 
@@ -12,27 +15,29 @@ import gnu.inet.encoding.StringprepException;
  */
 public final class Jid {
 
-    private final String localpart;
-    private final String domainpart;
-    private final String resourcepart;
+	private static LruCache<String,Jid> cache = new LruCache<>(1024);
 
-    // It's much more efficient to store the ful JID as well as the parts instead of figuring them
-    // all out every time (since some characters are displayed but aren't used for comparisons).
-    private final String displayjid;
+	private final String localpart;
+	private final String domainpart;
+	private final String resourcepart;
 
-    public String getLocalpart() {
-        return localpart;
-    }
+	// It's much more efficient to store the ful JID as well as the parts instead of figuring them
+	// all out every time (since some characters are displayed but aren't used for comparisons).
+	private final String displayjid;
 
-    public String getDomainpart() {
-        return IDN.toUnicode(domainpart);
-    }
+	public String getLocalpart() {
+		return localpart;
+	}
 
-    public String getResourcepart() {
-        return resourcepart;
-    }
+	public String getDomainpart() {
+		return IDN.toUnicode(domainpart);
+	}
 
-	public static Jid fromSessionID(SessionID id) throws InvalidJidException{
+	public String getResourcepart() {
+		return resourcepart;
+	}
+
+	public static Jid fromSessionID(final SessionID id) throws InvalidJidException{
 		if (id.getUserID().isEmpty()) {
 			return Jid.fromString(id.getAccountID());
 		} else {
@@ -40,152 +45,175 @@ public final class Jid {
 		}
 	}
 
-    public static Jid fromString(final String jid) throws InvalidJidException {
-        return new Jid(jid);
-    }
+	public static Jid fromString(final String jid) throws InvalidJidException {
+		return Jid.fromString(jid, false);
+	}
 
-    public static Jid fromParts(final String localpart,
-                                final String domainpart,
-                                final String resourcepart) throws InvalidJidException {
-        String out;
-        if (localpart == null || localpart.isEmpty()) {
-            out = domainpart;
-        } else {
-            out = localpart + "@" + domainpart;
-        }
-        if (resourcepart != null && !resourcepart.isEmpty()) {
-            out = out + "/" + resourcepart;
-        }
-        return new Jid(out);
-    }
+	public static Jid fromString(final String jid, final boolean safe) throws InvalidJidException {
+		return new Jid(jid, safe);
+	}
 
-    private Jid(final String jid) throws InvalidJidException {
-        // Hackish Android way to count the number of chars in a string... should work everywhere.
-        final int atCount = jid.length() - jid.replace("@", "").length();
-        final int slashCount = jid.length() - jid.replace("/", "").length();
+	public static Jid fromParts(final String localpart,
+			final String domainpart,
+			final String resourcepart) throws InvalidJidException {
+		String out;
+		if (localpart == null || localpart.isEmpty()) {
+			out = domainpart;
+		} else {
+			out = localpart + "@" + domainpart;
+		}
+		if (resourcepart != null && !resourcepart.isEmpty()) {
+			out = out + "/" + resourcepart;
+		}
+		return new Jid(out, false);
+	}
 
-        // Throw an error if there's anything obvious wrong with the JID...
-        if (jid.isEmpty() || jid.length() > 3071) {
-            throw new InvalidJidException(InvalidJidException.INVALID_LENGTH);
-        }
-        if (atCount > 1 || slashCount > 1 ||
-                jid.startsWith("@") || jid.endsWith("@") ||
-                jid.startsWith("/") || jid.endsWith("/")) {
-            throw new InvalidJidException(InvalidJidException.INVALID_CHARACTER);
-        }
+	private Jid(final String jid, final boolean safe) throws InvalidJidException {
+		if (jid == null) throw new InvalidJidException(InvalidJidException.IS_NULL);
 
-        String finaljid;
+		Jid fromCache = Jid.cache.get(jid);
+		if (fromCache != null) {
+			displayjid = fromCache.displayjid;
+			localpart = fromCache.localpart;
+			domainpart = fromCache.domainpart;
+			resourcepart = fromCache.resourcepart;
+			return;
+		}
 
-        final int domainpartStart;
-        if (atCount == 1) {
-            final int atLoc = jid.indexOf("@");
-            final String lp = jid.substring(0, atLoc);
-            try {
-                localpart = Stringprep.nodeprep(lp);
-            } catch (final StringprepException e) {
-                throw new InvalidJidException(InvalidJidException.STRINGPREP_FAIL, e);
-            }
-            if (localpart.isEmpty() || localpart.length() > 1023) {
-                throw new InvalidJidException(InvalidJidException.INVALID_PART_LENGTH);
-            }
-            domainpartStart = atLoc + 1;
-            finaljid = lp + "@";
-        } else {
-            localpart = "";
-            finaljid = "";
-            domainpartStart = 0;
-        }
+		// Hackish Android way to count the number of chars in a string... should work everywhere.
+		final int atCount = jid.length() - jid.replace("@", "").length();
+		final int slashCount = jid.length() - jid.replace("/", "").length();
 
-        final String dp;
-        if (slashCount == 1) {
-            final int slashLoc = jid.indexOf("/");
-            final String rp = jid.substring(slashLoc + 1, jid.length());
-            try {
-                resourcepart = Stringprep.resourceprep(rp);
-            } catch (final StringprepException e) {
-                throw new InvalidJidException(InvalidJidException.STRINGPREP_FAIL, e);
-            }
-            if (resourcepart.isEmpty() || resourcepart.length() > 1023) {
-                throw new InvalidJidException(InvalidJidException.INVALID_PART_LENGTH);
-            }
-            dp = IDN.toUnicode(jid.substring(domainpartStart, slashLoc), IDN.USE_STD3_ASCII_RULES);
-            finaljid = finaljid + dp + "/" + rp;
-        } else {
-            resourcepart = "";
-            dp = IDN.toUnicode(jid.substring(domainpartStart, jid.length()),
-                    IDN.USE_STD3_ASCII_RULES);
-            finaljid = finaljid + dp;
-        }
+		// Throw an error if there's anything obvious wrong with the JID...
+		if (jid.isEmpty() || jid.length() > 3071) {
+			throw new InvalidJidException(InvalidJidException.INVALID_LENGTH);
+		}
 
-        // Remove trailing "." before storing the domain part.
-        if (dp.endsWith(".")) {
-            try {
-                domainpart = IDN.toASCII(dp.substring(0, dp.length() - 1), IDN.USE_STD3_ASCII_RULES);
-            } catch (final IllegalArgumentException e) {
-                throw new InvalidJidException(e);
-            }
-        } else {
-            try {
-                domainpart = IDN.toASCII(dp, IDN.USE_STD3_ASCII_RULES);
-            } catch (final IllegalArgumentException e) {
-                throw new InvalidJidException(e);
-            }
-        }
+		// Go ahead and check if the localpart or resourcepart is empty.
+		if (jid.startsWith("@") || (jid.endsWith("@") && slashCount == 0) || jid.startsWith("/") || (jid.endsWith("/") && slashCount < 2)) {
+			throw new InvalidJidException(InvalidJidException.INVALID_CHARACTER);
+		}
 
-        // TODO: Find a proper domain validation library; validate individual parts, separators, etc.
-        if (domainpart.isEmpty() || domainpart.length() > 1023) {
-            throw new InvalidJidException(InvalidJidException.INVALID_PART_LENGTH);
-        }
+		String finaljid;
 
-        this.displayjid = finaljid;
-    }
+		final int domainpartStart;
+		final int atLoc = jid.indexOf("@");
+		final int slashLoc = jid.indexOf("/");
+		// If there is no "@" in the JID (eg. "example.net" or "example.net/resource")
+		// or there are one or more "@" signs but they're all in the resourcepart (eg. "example.net/@/rp@"):
+		if (atCount == 0 || (atCount > 0 && slashLoc != -1 && atLoc > slashLoc)) {
+			localpart = "";
+			finaljid = "";
+			domainpartStart = 0;
+		} else {
+			final String lp = jid.substring(0, atLoc);
+			try {
+				localpart = Config.DISABLE_STRING_PREP || safe ? lp : Stringprep.nodeprep(lp);
+			} catch (final StringprepException e) {
+				throw new InvalidJidException(InvalidJidException.STRINGPREP_FAIL, e);
+			}
+			if (localpart.isEmpty() || localpart.length() > 1023) {
+				throw new InvalidJidException(InvalidJidException.INVALID_PART_LENGTH);
+			}
+			domainpartStart = atLoc + 1;
+			finaljid = lp + "@";
+		}
 
-    public Jid toBareJid() {
-        try {
-            return resourcepart.isEmpty() ? this : fromParts(localpart, domainpart, "");
-        } catch (final InvalidJidException e) {
-            // This should never happen.
-            return null;
-        }
-    }
+		final String dp;
+		if (slashCount > 0) {
+			final String rp = jid.substring(slashLoc + 1, jid.length());
+			try {
+				resourcepart = Config.DISABLE_STRING_PREP || safe ? rp : Stringprep.resourceprep(rp);
+			} catch (final StringprepException e) {
+				throw new InvalidJidException(InvalidJidException.STRINGPREP_FAIL, e);
+			}
+			if (resourcepart.isEmpty() || resourcepart.length() > 1023) {
+				throw new InvalidJidException(InvalidJidException.INVALID_PART_LENGTH);
+			}
+			dp = IDN.toUnicode(jid.substring(domainpartStart, slashLoc), IDN.USE_STD3_ASCII_RULES);
+			finaljid = finaljid + dp + "/" + rp;
+		} else {
+			resourcepart = "";
+			dp = IDN.toUnicode(jid.substring(domainpartStart, jid.length()),
+					IDN.USE_STD3_ASCII_RULES);
+			finaljid = finaljid + dp;
+		}
 
-    public Jid toDomainJid() {
-        try {
-            return resourcepart.isEmpty() && localpart.isEmpty() ? this : fromString(getDomainpart());
-        } catch (final InvalidJidException e) {
-            // This should never happen.
-            return null;
-        }
-    }
+		// Remove trailing "." before storing the domain part.
+		if (dp.endsWith(".")) {
+			try {
+				domainpart = IDN.toASCII(dp.substring(0, dp.length() - 1), IDN.USE_STD3_ASCII_RULES);
+			} catch (final IllegalArgumentException e) {
+				throw new InvalidJidException(e);
+			}
+		} else {
+			try {
+				domainpart = IDN.toASCII(dp, IDN.USE_STD3_ASCII_RULES);
+			} catch (final IllegalArgumentException e) {
+				throw new InvalidJidException(e);
+			}
+		}
 
-    @Override
-    public String toString() {
-        return displayjid;
-    }
+		// TODO: Find a proper domain validation library; validate individual parts, separators, etc.
+		if (domainpart.isEmpty() || domainpart.length() > 1023) {
+			throw new InvalidJidException(InvalidJidException.INVALID_PART_LENGTH);
+		}
 
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+		Jid.cache.put(jid, this);
 
-        final Jid jid = (Jid) o;
+		this.displayjid = finaljid;
+	}
 
-        return jid.hashCode() == this.hashCode();
-    }
+	public Jid toBareJid() {
+		try {
+			return resourcepart.isEmpty() ? this : fromParts(localpart, domainpart, "");
+		} catch (final InvalidJidException e) {
+			// This should never happen.
+			return null;
+		}
+	}
 
-    @Override
-    public int hashCode() {
-        int result = localpart.hashCode();
-        result = 31 * result + domainpart.hashCode();
-        result = 31 * result + resourcepart.hashCode();
-        return result;
-    }
+	public Jid toDomainJid() {
+		try {
+			return resourcepart.isEmpty() && localpart.isEmpty() ? this : fromString(getDomainpart());
+		} catch (final InvalidJidException e) {
+			// This should never happen.
+			return null;
+		}
+	}
 
-    public boolean hasLocalpart() {
-        return !localpart.isEmpty();
-    }
+	@Override
+	public String toString() {
+		return displayjid;
+	}
 
-    public boolean isBareJid() {
-        return this.resourcepart.isEmpty();
-    }
+	@Override
+	public boolean equals(final Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		final Jid jid = (Jid) o;
+
+		return jid.hashCode() == this.hashCode();
+	}
+
+	@Override
+	public int hashCode() {
+		int result = localpart.hashCode();
+		result = 31 * result + domainpart.hashCode();
+		result = 31 * result + resourcepart.hashCode();
+		return result;
+	}
+
+	public boolean hasLocalpart() {
+		return !localpart.isEmpty();
+	}
+
+	public boolean isBareJid() {
+		return this.resourcepart.isEmpty();
+	}
+
+	public boolean isDomainJid() {
+		return !this.hasLocalpart();
+	}
 }

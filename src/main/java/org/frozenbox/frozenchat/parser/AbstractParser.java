@@ -1,9 +1,8 @@
 package org.frozenbox.frozenchat.parser;
 
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Locale;
 
@@ -11,7 +10,6 @@ import org.frozenbox.frozenchat.entities.Account;
 import org.frozenbox.frozenchat.entities.Contact;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.xml.Element;
-import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
 public abstract class AbstractParser {
@@ -24,54 +22,41 @@ public abstract class AbstractParser {
 
 	protected long getTimestamp(Element packet) {
 		long now = System.currentTimeMillis();
-		ArrayList<String> stamps = new ArrayList<>();
-		for (Element child : packet.getChildren()) {
-			if (child.getName().equals("delay")) {
-				stamps.add(child.getAttribute("stamp").replace("Z", "+0000"));
-			}
+		Element delay = packet.findChild("delay");
+		if (delay == null) {
+			return now;
 		}
-		Collections.sort(stamps);
-		if (stamps.size() >= 1) {
-			try {
-				String stamp = stamps.get(stamps.size() - 1);
-				if (stamp.contains(".")) {
-					Date date = new SimpleDateFormat(
-							"yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
-							.parse(stamp);
-					if (now < date.getTime()) {
-						return now;
-					} else {
-						return date.getTime();
-					}
-				} else {
-					Date date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ",
-							Locale.US).parse(stamp);
-					if (now < date.getTime()) {
-						return now;
-					} else {
-						return date.getTime();
-					}
-				}
-			} catch (ParseException e) {
-				return now;
-			}
-		} else {
+		String stamp = delay.getAttribute("stamp");
+		if (stamp == null) {
+			return now;
+		}
+		try {
+			long time = parseTimestamp(stamp).getTime();
+			return now < time ? now : time;
+		} catch (ParseException e) {
 			return now;
 		}
 	}
 
+	public static Date parseTimestamp(String timestamp) throws ParseException {
+		timestamp = timestamp.replace("Z", "+0000");
+		SimpleDateFormat dateFormat;
+		timestamp = timestamp.substring(0,19)+timestamp.substring(timestamp.length() -5,timestamp.length());
+		dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ",Locale.US);
+		return dateFormat.parse(timestamp);
+	}
+
 	protected void updateLastseen(final Element packet, final Account account,
 			final boolean presenceOverwrite) {
-        Jid from;
-        try {
-            from = Jid.fromString(packet.getAttribute("from")).toBareJid();
-        } catch (final InvalidJidException e) {
-            // TODO: Handle this?
-            from = null;
-        }
-        String presence = from == null || from.isBareJid() ? "" : from.getResourcepart();
-		Contact contact = account.getRoster().getContact(from);
-		long timestamp = getTimestamp(packet);
+		final Jid from = packet.getAttributeAsJid("from");
+		updateLastseen(packet, account, from, presenceOverwrite);
+	}
+
+	protected void updateLastseen(final Element packet, final Account account, final Jid from,
+								  final boolean presenceOverwrite) {
+		final String presence = from == null || from.isBareJid() ? "" : from.getResourcepart();
+		final Contact contact = account.getRoster().getContact(from);
+		final long timestamp = getTimestamp(packet);
 		if (timestamp >= contact.lastseen.time) {
 			contact.lastseen.time = timestamp;
 			if (!presence.isEmpty() && presenceOverwrite) {

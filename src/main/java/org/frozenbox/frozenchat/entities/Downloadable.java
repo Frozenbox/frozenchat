@@ -2,9 +2,8 @@ package org.frozenbox.frozenchat.entities;
 
 public interface Downloadable {
 
-	public final String[] VALID_EXTENSIONS = {"webp", "jpeg", "jpg", "png", "jpe", "zip", "gz", "xz", "tar", "mp3", "mp4", "webm", "gif", "3gp"};
-	public final String[] VALID_IMAGE_EXTENSIONS = {"webp", "jpeg", "jpg", "png", "jpe", "gif"};
-	public final String[] VALID_CRYPTO_EXTENSIONS = {"pgp", "gpg", "otr", "key"};
+	public final String[] VALID_IMAGE_EXTENSIONS = {"webp", "jpeg", "jpg", "png", "jpe"};
+	public final String[] VALID_CRYPTO_EXTENSIONS = {"pgp", "gpg", "otr"};
 
 	public static final int STATUS_UNKNOWN = 0x200;
 	public static final int STATUS_CHECKING = 0x201;

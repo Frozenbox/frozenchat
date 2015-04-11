@@ -57,39 +57,44 @@ public class FileBackend {
 
 	public DownloadableFile getFile(Message message, boolean decrypted) {
 		String path = message.getRelativeFilePath();
-		if (!decrypted && (message.getEncryption() == Message.ENCRYPTION_PGP || message.getEncryption() == Message.ENCRYPTION_DECRYPTED)) {
-			String extension;
-			if (path != null && !path.isEmpty()) {
-				String[] parts = path.split("\\.");
-				extension = "."+parts[parts.length - 1];
-			} else if (message.getType() == Message.TYPE_IMAGE || message.getType() == Message.TYPE_TEXT) {
+		String extension;
+		if (path != null && !path.isEmpty()) {
+			String[] parts = path.split("\\.");
+			extension = "."+parts[parts.length - 1];
+		} else {
+			if (message.getType() == Message.TYPE_IMAGE || message.getType() == Message.TYPE_TEXT) {
 				extension = ".webp";
 			} else {
 				extension = "";
 			}
+			path = message.getUuid()+extension;
+		}
+		final boolean encrypted = !decrypted
+				&& (message.getEncryption() == Message.ENCRYPTION_PGP
+				|| message.getEncryption() == Message.ENCRYPTION_DECRYPTED);
+		if (encrypted) {
 			return new DownloadableFile(getConversationsFileDirectory()+message.getUuid()+extension+".pgp");
-		} else if (path != null && !path.isEmpty()) {
+		} else {
 			if (path.startsWith("/")) {
 				return new DownloadableFile(path);
 			} else {
-				return new DownloadableFile(getConversationsFileDirectory()+path);
+				if (message.getType() == Message.TYPE_FILE) {
+					return new DownloadableFile(getConversationsFileDirectory() + path);
+				} else {
+					return new DownloadableFile(getConversationsImageDirectory()+path);
+				}
 			}
-		} else {
-			StringBuilder filename = new StringBuilder();
-			filename.append(getConversationsImageDirectory());
-			filename.append(message.getUuid()+".webp");
-			return new DownloadableFile(filename.toString());
 		}
 	}
 
 	public static String getConversationsFileDirectory() {
-		return  Environment.getExternalStorageDirectory().getAbsolutePath()+"/FrozenChat/";
+		return  Environment.getExternalStorageDirectory().getAbsolutePath()+"/Conversations/";
 	}
 
 	public static String getConversationsImageDirectory() {
 		return Environment.getExternalStoragePublicDirectory(
 			Environment.DIRECTORY_PICTURES).getAbsolutePath()
-			+ "/FrozenChat/";
+			+ "/Conversations/";
 	}
 
 	public Bitmap resize(Bitmap originalBitmap, int size) {
@@ -313,39 +318,41 @@ public class FileBackend {
 	}
 
 	public boolean save(Avatar avatar) {
+		File file;
 		if (isAvatarCached(avatar)) {
-			return true;
-		}
-		String filename = getAvatarPath(avatar.getFilename());
-		File file = new File(filename + ".tmp");
-		file.getParentFile().mkdirs();
-		try {
-			file.createNewFile();
-			FileOutputStream mFileOutputStream = new FileOutputStream(file);
-			MessageDigest digest = MessageDigest.getInstance("SHA-1");
-			digest.reset();
-			DigestOutputStream mDigestOutputStream = new DigestOutputStream(
-					mFileOutputStream, digest);
-			mDigestOutputStream.write(avatar.getImageAsBytes());
-			mDigestOutputStream.flush();
-			mDigestOutputStream.close();
-			avatar.size = file.length();
-			String sha1sum = CryptoHelper.bytesToHex(digest.digest());
-			if (sha1sum.equals(avatar.sha1sum)) {
-				file.renameTo(new File(filename));
-				return true;
-			} else {
-				Log.d(Config.LOGTAG, "sha1sum mismatch for " + avatar.owner);
-				file.delete();
+			file = new File(getAvatarPath(avatar.getFilename()));
+		} else {
+			String filename = getAvatarPath(avatar.getFilename());
+			file = new File(filename + ".tmp");
+			file.getParentFile().mkdirs();
+			try {
+				file.createNewFile();
+				FileOutputStream mFileOutputStream = new FileOutputStream(file);
+				MessageDigest digest = MessageDigest.getInstance("SHA-1");
+				digest.reset();
+				DigestOutputStream mDigestOutputStream = new DigestOutputStream(
+						mFileOutputStream, digest);
+				mDigestOutputStream.write(avatar.getImageAsBytes());
+				mDigestOutputStream.flush();
+				mDigestOutputStream.close();
+				String sha1sum = CryptoHelper.bytesToHex(digest.digest());
+				if (sha1sum.equals(avatar.sha1sum)) {
+					file.renameTo(new File(filename));
+				} else {
+					Log.d(Config.LOGTAG, "sha1sum mismatch for " + avatar.owner);
+					file.delete();
+					return false;
+				}
+			} catch (FileNotFoundException e) {
+				return false;
+			} catch (IOException e) {
+				return false;
+			} catch (NoSuchAlgorithmException e) {
 				return false;
 			}
-		} catch (FileNotFoundException e) {
-			return false;
-		} catch (IOException e) {
-			return false;
-		} catch (NoSuchAlgorithmException e) {
-			return false;
 		}
+		avatar.size = file.length();
+		return true;
 	}
 
 	public String getAvatarPath(String avatar) {
@@ -358,11 +365,13 @@ public class FileBackend {
 	}
 
 	public Bitmap cropCenterSquare(Uri image, int size) {
+		if (image == null) {
+			return null;
+		}
 		try {
 			BitmapFactory.Options options = new BitmapFactory.Options();
 			options.inSampleSize = calcSampleSize(image, size);
-			InputStream is = mXmppConnectionService.getContentResolver()
-					.openInputStream(image);
+			InputStream is = mXmppConnectionService.getContentResolver().openInputStream(image);
 			Bitmap input = BitmapFactory.decodeStream(is, null, options);
 			if (input == null) {
 				return null;
@@ -379,12 +388,13 @@ public class FileBackend {
 	}
 
 	public Bitmap cropCenter(Uri image, int newHeight, int newWidth) {
+		if (image == null) {
+			return null;
+		}
 		try {
 			BitmapFactory.Options options = new BitmapFactory.Options();
-			options.inSampleSize = calcSampleSize(image,
-					Math.max(newHeight, newWidth));
-			InputStream is = mXmppConnectionService.getContentResolver()
-					.openInputStream(image);
+			options.inSampleSize = calcSampleSize(image,Math.max(newHeight, newWidth));
+			InputStream is = mXmppConnectionService.getContentResolver().openInputStream(image);
 			Bitmap source = BitmapFactory.decodeStream(is, null, options);
 
 			int sourceWidth = source.getWidth();
@@ -397,13 +407,10 @@ public class FileBackend {
 			float left = (newWidth - scaledWidth) / 2;
 			float top = (newHeight - scaledHeight) / 2;
 
-			RectF targetRect = new RectF(left, top, left + scaledWidth, top
-					+ scaledHeight);
-			Bitmap dest = Bitmap.createBitmap(newWidth, newHeight,
-					source.getConfig());
+			RectF targetRect = new RectF(left, top, left + scaledWidth, top + scaledHeight);
+			Bitmap dest = Bitmap.createBitmap(newWidth, newHeight, source.getConfig());
 			Canvas canvas = new Canvas(dest);
 			canvas.drawBitmap(source, null, targetRect, null);
-
 			return dest;
 		} catch (FileNotFoundException e) {
 			return null;
@@ -429,12 +436,10 @@ public class FileBackend {
 		return output;
 	}
 
-	private int calcSampleSize(Uri image, int size)
-			throws FileNotFoundException {
+	private int calcSampleSize(Uri image, int size) throws FileNotFoundException {
 		BitmapFactory.Options options = new BitmapFactory.Options();
 		options.inJustDecodeBounds = true;
-		BitmapFactory.decodeStream(mXmppConnectionService.getContentResolver()
-				.openInputStream(image), null, options);
+		BitmapFactory.decodeStream(mXmppConnectionService.getContentResolver().openInputStream(image), null, options);
 		return calcSampleSize(options, size);
 	}
 

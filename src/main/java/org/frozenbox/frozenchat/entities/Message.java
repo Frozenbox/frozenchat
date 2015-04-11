@@ -8,6 +8,7 @@ import java.net.URL;
 import java.util.Arrays;
 
 import org.frozenbox.frozenchat.Config;
+import org.frozenbox.frozenchat.utils.GeoHelper;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
@@ -36,16 +37,20 @@ public class Message extends AbstractEntity {
 	public static final int TYPE_STATUS = 3;
 	public static final int TYPE_PRIVATE = 4;
 
-	public static String CONVERSATION = "conversationUuid";
-	public static String COUNTERPART = "counterpart";
-	public static String TRUE_COUNTERPART = "trueCounterpart";
-	public static String BODY = "body";
-	public static String TIME_SENT = "timeSent";
-	public static String ENCRYPTION = "encryption";
-	public static String STATUS = "status";
-	public static String TYPE = "type";
-	public static String REMOTE_MSG_ID = "remoteMsgId";
-	public static String RELATIVE_FILE_PATH = "relativeFilePath";
+	public static final String CONVERSATION = "conversationUuid";
+	public static final String COUNTERPART = "counterpart";
+	public static final String TRUE_COUNTERPART = "trueCounterpart";
+	public static final String BODY = "body";
+	public static final String TIME_SENT = "timeSent";
+	public static final String ENCRYPTION = "encryption";
+	public static final String STATUS = "status";
+	public static final String TYPE = "type";
+	public static final String REMOTE_MSG_ID = "remoteMsgId";
+	public static final String SERVER_MSG_ID = "serverMsgId";
+	public static final String RELATIVE_FILE_PATH = "relativeFilePath";
+	public static final String ME_COMMAND = "/me ";
+
+
 	public boolean markable = false;
 	protected String conversationUuid;
 	protected Jid counterpart;
@@ -59,6 +64,7 @@ public class Message extends AbstractEntity {
 	protected String relativeFilePath;
 	protected boolean read = true;
 	protected String remoteMsgId = null;
+	protected String serverMsgId = null;
 	protected Conversation conversation = null;
 	protected Downloadable downloadable = null;
 	private Message mNextMessage = null;
@@ -73,16 +79,25 @@ public class Message extends AbstractEntity {
 	}
 
 	public Message(Conversation conversation, String body, int encryption, int status) {
-		this(java.util.UUID.randomUUID().toString(), conversation.getUuid(),
-				conversation.getContactJid().toBareJid(), null, body, System
-						.currentTimeMillis(), encryption,
-				status, TYPE_TEXT, null, null);
+		this(java.util.UUID.randomUUID().toString(),
+				conversation.getUuid(),
+				conversation.getJid() == null ? null : conversation.getJid().toBareJid(),
+				null,
+				body,
+				System.currentTimeMillis(),
+				encryption,
+				status,
+				TYPE_TEXT,
+				null,
+				null,
+				null);
 		this.conversation = conversation;
 	}
 
-	public Message(final String uuid, final String conversationUUid, final Jid counterpart,
-				   final Jid trueCounterpart, final String body, final long timeSent,
-				   final int encryption, final int status, final int type, final String remoteMsgId, final String relativeFilePath) {
+	private Message(final String uuid, final String conversationUUid, final Jid counterpart,
+			final Jid trueCounterpart, final String body, final long timeSent,
+			final int encryption, final int status, final int type, final String remoteMsgId,
+			final String relativeFilePath, final String serverMsgId) {
 		this.uuid = uuid;
 		this.conversationUuid = conversationUUid;
 		this.counterpart = counterpart;
@@ -94,6 +109,7 @@ public class Message extends AbstractEntity {
 		this.type = type;
 		this.remoteMsgId = remoteMsgId;
 		this.relativeFilePath = relativeFilePath;
+		this.serverMsgId = serverMsgId;
 	}
 
 	public static Message fromCursor(Cursor cursor) {
@@ -101,7 +117,7 @@ public class Message extends AbstractEntity {
 		try {
 			String value = cursor.getString(cursor.getColumnIndex(COUNTERPART));
 			if (value != null) {
-				jid = Jid.fromString(value);
+				jid = Jid.fromString(value, true);
 			} else {
 				jid = null;
 			}
@@ -112,7 +128,7 @@ public class Message extends AbstractEntity {
 		try {
 			String value = cursor.getString(cursor.getColumnIndex(TRUE_COUNTERPART));
 			if (value != null) {
-				trueCounterpart = Jid.fromString(value);
+				trueCounterpart = Jid.fromString(value, true);
 			} else {
 				trueCounterpart = null;
 			}
@@ -129,13 +145,15 @@ public class Message extends AbstractEntity {
 				cursor.getInt(cursor.getColumnIndex(STATUS)),
 				cursor.getInt(cursor.getColumnIndex(TYPE)),
 				cursor.getString(cursor.getColumnIndex(REMOTE_MSG_ID)),
-				cursor.getString(cursor.getColumnIndex(RELATIVE_FILE_PATH)));
+				cursor.getString(cursor.getColumnIndex(RELATIVE_FILE_PATH)),
+				cursor.getString(cursor.getColumnIndex(SERVER_MSG_ID)));
 	}
 
-	public static Message createStatusMessage(Conversation conversation) {
+	public static Message createStatusMessage(Conversation conversation, String body) {
 		Message message = new Message();
 		message.setType(Message.TYPE_STATUS);
 		message.setConversation(conversation);
+		message.setBody(body);
 		return message;
 	}
 
@@ -161,6 +179,7 @@ public class Message extends AbstractEntity {
 		values.put(TYPE, type);
 		values.put(REMOTE_MSG_ID, remoteMsgId);
 		values.put(RELATIVE_FILE_PATH, relativeFilePath);
+		values.put(SERVER_MSG_ID,serverMsgId);
 		return values;
 	}
 
@@ -192,7 +211,7 @@ public class Message extends AbstractEntity {
 				return null;
 			} else {
 				return this.conversation.getAccount().getRoster()
-						.getContactFromRoster(this.trueCounterpart);
+					.getContactFromRoster(this.trueCounterpart);
 			}
 		}
 	}
@@ -241,6 +260,14 @@ public class Message extends AbstractEntity {
 		this.remoteMsgId = id;
 	}
 
+	public String getServerMsgId() {
+		return this.serverMsgId;
+	}
+
+	public void setServerMsgId(String id) {
+		this.serverMsgId = id;
+	}
+
 	public boolean isRead() {
 		return this.read;
 	}
@@ -286,53 +313,100 @@ public class Message extends AbstractEntity {
 	}
 
 	public boolean equals(Message message) {
-		return (this.remoteMsgId != null) && (this.body != null) && (this.counterpart != null) && this.remoteMsgId.equals(message.getRemoteMsgId()) && this.body.equals(message.getBody()) && this.counterpart.equals(message.getCounterpart());
+		if (this.serverMsgId != null && message.getServerMsgId() != null) {
+			return this.serverMsgId.equals(message.getServerMsgId());
+		} else if (this.body == null || this.counterpart == null) {
+			return false;
+		} else if (message.getRemoteMsgId() != null) {
+			return (message.getRemoteMsgId().equals(this.remoteMsgId) || message.getRemoteMsgId().equals(this.uuid))
+					&& this.counterpart.equals(message.getCounterpart())
+					&& this.body.equals(message.getBody());
+		} else {
+			return this.remoteMsgId == null
+					&& this.counterpart.equals(message.getCounterpart())
+					&& this.body.equals(message.getBody())
+					&& Math.abs(this.getTimeSent() - message.getTimeSent()) < Config.PING_TIMEOUT * 500;
+		}
 	}
 
 	public Message next() {
-		if (this.mNextMessage == null) {
-			synchronized (this.conversation.messages) {
+		synchronized (this.conversation.messages) {
+			if (this.mNextMessage == null) {
 				int index = this.conversation.messages.indexOf(this);
-				if (index < 0
-						|| index >= this.conversation.getMessages().size() - 1) {
+				if (index < 0 || index >= this.conversation.messages.size() - 1) {
 					this.mNextMessage = null;
 				} else {
-					this.mNextMessage = this.conversation.messages
-							.get(index + 1);
+					this.mNextMessage = this.conversation.messages.get(index + 1);
 				}
 			}
+			return this.mNextMessage;
 		}
-		return this.mNextMessage;
 	}
 
 	public Message prev() {
-		if (this.mPreviousMessage == null) {
-			synchronized (this.conversation.messages) {
+		synchronized (this.conversation.messages) {
+			if (this.mPreviousMessage == null) {
 				int index = this.conversation.messages.indexOf(this);
 				if (index <= 0 || index > this.conversation.messages.size()) {
 					this.mPreviousMessage = null;
 				} else {
-					this.mPreviousMessage = this.conversation.messages
-							.get(index - 1);
+					this.mPreviousMessage = this.conversation.messages.get(index - 1);
 				}
 			}
+			return this.mPreviousMessage;
 		}
-		return this.mPreviousMessage;
 	}
 
 	public boolean mergeable(final Message message) {
-		return message != null && (message.getType() == Message.TYPE_TEXT && this.getDownloadable() == null && message.getDownloadable() == null && message.getEncryption() != Message.ENCRYPTION_PGP && this.getType() == message.getType() && this.getStatus() == message.getStatus() && this.getEncryption() == message.getEncryption() && this.getCounterpart() != null && this.getCounterpart().equals(message.getCounterpart()) && (message.getTimeSent() - this.getTimeSent()) <= (Config.MESSAGE_MERGE_WINDOW * 1000) && !message.bodyContainsDownloadable() && !this.bodyContainsDownloadable());
+		return message != null &&
+			(message.getType() == Message.TYPE_TEXT &&
+			 this.getDownloadable() == null &&
+			 message.getDownloadable() == null &&
+			 message.getEncryption() != Message.ENCRYPTION_PGP &&
+			 this.getType() == message.getType() &&
+			 //this.getStatus() == message.getStatus() &&
+			 isStatusMergeable(this.getStatus(),message.getStatus()) &&
+			 this.getEncryption() == message.getEncryption() &&
+			 this.getCounterpart() != null &&
+			 this.getCounterpart().equals(message.getCounterpart()) &&
+			 (message.getTimeSent() - this.getTimeSent()) <= (Config.MESSAGE_MERGE_WINDOW * 1000) &&
+			 !GeoHelper.isGeoUri(message.getBody()) &&
+			 !GeoHelper.isGeoUri(this.body) &&
+			 !message.bodyContainsDownloadable() &&
+			 !this.bodyContainsDownloadable() &&
+			 !message.getBody().startsWith(ME_COMMAND) &&
+			 !this.getBody().startsWith(ME_COMMAND)
+			);
+	}
+
+	private static boolean isStatusMergeable(int a, int b) {
+		return a == b || (
+				( a == Message.STATUS_SEND_RECEIVED && b == Message.STATUS_UNSEND)
+				|| (a == Message.STATUS_SEND_RECEIVED && b == Message.STATUS_SEND)
+				|| (a == Message.STATUS_UNSEND && b == Message.STATUS_SEND)
+				|| (a == Message.STATUS_UNSEND && b == Message.STATUS_SEND_RECEIVED)
+				|| (a == Message.STATUS_SEND && b == Message.STATUS_UNSEND)
+				|| (a == Message.STATUS_SEND && b == Message.STATUS_SEND_RECEIVED)
+		);
 	}
 
 	public String getMergedBody() {
-		Message next = this.next();
+		final Message next = this.next();
 		if (this.mergeable(next)) {
-			return body.trim() + '\n' + next.getMergedBody();
+			return getBody().trim() + '\n' + next.getMergedBody();
 		}
-		return body.trim();
+		return getBody().trim();
+	}
+
+	public boolean hasMeCommand() {
+		return getMergedBody().startsWith(ME_COMMAND);
 	}
 
 	public int getMergedStatus() {
+		final Message next = this.next();
+		if (this.mergeable(next)) {
+			return next.getStatus();
+		}
 		return getStatus();
 	}
 
@@ -361,28 +435,28 @@ public class Message extends AbstractEntity {
 			if (!url.getProtocol().equalsIgnoreCase("http")
 					&& !url.getProtocol().equalsIgnoreCase("https")) {
 				return false;
-			}
+					}
 			if (url.getPath() == null) {
 				return false;
 			}
 			String[] pathParts = url.getPath().split("/");
 			String filename;
 			if (pathParts.length > 0) {
-				filename = pathParts[pathParts.length - 1];
+				filename = pathParts[pathParts.length - 1].toLowerCase();
 			} else {
 				return false;
 			}
 			String[] extensionParts = filename.split("\\.");
 			if (extensionParts.length == 2
 					&& Arrays.asList(Downloadable.VALID_IMAGE_EXTENSIONS).contains(
-					extensionParts[extensionParts.length - 1])) {
+						extensionParts[extensionParts.length - 1])) {
 				return true;
 			} else if (extensionParts.length == 3
 					&& Arrays
 					.asList(Downloadable.VALID_CRYPTO_EXTENSIONS)
 					.contains(extensionParts[extensionParts.length - 1])
 					&& Arrays.asList(Downloadable.VALID_IMAGE_EXTENSIONS).contains(
-					extensionParts[extensionParts.length - 2])) {
+						extensionParts[extensionParts.length - 2])) {
 				return true;
 			} else {
 				return false;
@@ -484,6 +558,15 @@ public class Message extends AbstractEntity {
 		} else {
 			return null;
 		}
+	}
+
+	public void untie() {
+		this.mNextMessage = null;
+		this.mPreviousMessage = null;
+	}
+
+	public boolean isFileOrImage() {
+		return type == TYPE_FILE || type == TYPE_IMAGE;
 	}
 
 	public class ImageParams {

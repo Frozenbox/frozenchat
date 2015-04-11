@@ -19,7 +19,7 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/FrozenchatTheme"
+        android:theme="@style/ConversationsTheme"
         tools:replace="android:label" >
         <service android:name=".services.XmppConnectionService" />
 
@@ -33,7 +33,7 @@
 
         <activity
             android:name=".ui.ConversationActivity"
-            android:label="@string/title_activity_conversations"
+            android:label="@string/app_name"
             android:launchMode="singleTask"
             android:windowSoftInputMode="stateHidden" >
             <intent-filter>
@@ -77,6 +77,12 @@
             android:name=".ui.ChooseContactActivity"
             android:label="@string/title_activity_choose_contact" />
         <activity
+            android:name=".ui.BlocklistActivity"
+            android:label="@string/title_activity_block_list" />
+	    <activity
+		    android:name=".ui.ChangePasswordActivity"
+		    android:label="@string/change_password_on_server" />
+        <activity
             android:name=".ui.ManageAccountActivity"
             android:configChanges="orientation|screenSize"
             android:label="@string/title_activity_manage_accounts" />
@@ -101,7 +107,7 @@
             android:windowSoftInputMode="stateHidden" />
         <activity
             android:name=".ui.ShareWithActivity"
-            android:label="@string/title_activity_conversations" >
+            android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
 
@@ -114,12 +120,19 @@
 
                 <category android:name="android.intent.category.DEFAULT" />
 
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
         <activity
             android:name="de.duenndns.ssl.MemorizingActivity"
-            android:theme="@style/FrozenchatTheme"
+            android:theme="@style/ConversationsTheme"
             tools:replace="android:theme"/>
         <activity
             android:name=".ui.AboutActivity"

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/secondarybackground" >
@@ -19,15 +20,19 @@
                 android:id="@+id/editor"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="8dp"
+                android:layout_marginLeft="@dimen/activity_horizontal_margin"
+                android:layout_marginRight="@dimen/activity_horizontal_margin"
+                android:layout_marginTop="@dimen/activity_vertical_margin"
+                android:layout_marginBottom="@dimen/activity_vertical_margin"
                 android:background="@drawable/infocard_border"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/infocard_padding">
                 <ImageView android:id="@+id/avater"
                     android:layout_width="72dp"
                     android:layout_height="72dp"
                     android:layout_alignParentTop="true"
-                    android:layout_marginRight="16dp"/>
+                    android:layout_marginRight="16dp"
+                    android:contentDescription="@string/account_image_description"/>
                 <LinearLayout
                     android:layout_width="fill_parent"
                     android:layout_height="wrap_content"
@@ -104,10 +109,13 @@
                 android:id="@+id/stats"
                 android:layout_width="fill_parent"
                 android:layout_height="fill_parent"
-                android:layout_margin="8dp"
+                android:layout_marginLeft="@dimen/activity_horizontal_margin"
+                android:layout_marginRight="@dimen/activity_horizontal_margin"
+                android:layout_marginTop="@dimen/activity_vertical_margin"
+                android:layout_marginBottom="@dimen/activity_vertical_margin"
                 android:background="@drawable/infocard_border"
                 android:orientation="vertical"
-                android:padding="16dp"
+                android:padding="@dimen/infocard_padding"
                 android:visibility="gone" >
 
                 <TableLayout
@@ -117,7 +125,8 @@
 
                     <TableRow
                         android:layout_width="fill_parent"
-                        android:layout_height="wrap_content" >
+                        android:layout_height="wrap_content"
+                        tools:ignore="UselessParent">
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -132,8 +141,17 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="right"
                             android:textColor="@color/primarytext"
-                            android:textSize="?attr/TextSizeBody" />
+                            android:textSize="?attr/TextSizeBody"
+                            tools:ignore="RtlHardcoded"/>
                     </TableRow>
+
+                </TableLayout>
+                <TableLayout
+                    android:id="@+id/server_info_more"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:stretchColumns="1"
+                    android:visibility="gone" >
 
                     <TableRow
                         android:layout_width="fill_parent"
@@ -152,7 +170,29 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="right"
                             android:textColor="@color/primarytext"
+                            android:textSize="?attr/TextSizeBody"
+                            tools:ignore="RtlHardcoded"/>
+                    </TableRow>
+
+                    <TableRow
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content" >
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/server_info_blocking"
+                            android:textColor="@color/primarytext"
                             android:textSize="?attr/TextSizeBody" />
+
+                        <TextView
+                            android:id="@+id/server_info_blocking"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="right"
+                            android:textColor="@color/primarytext"
+                            android:textSize="?attr/TextSizeBody"
+                            tools:ignore="RtlHardcoded"/>
                     </TableRow>
 
                     <TableRow
@@ -172,7 +212,29 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="right"
                             android:textColor="@color/primarytext"
+                            android:textSize="?attr/TextSizeBody"
+                            tools:ignore="RtlHardcoded"/>
+                    </TableRow>
+
+                    <TableRow
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content" >
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/server_info_roster_version"
+                            android:textColor="@color/primarytext"
                             android:textSize="?attr/TextSizeBody" />
+
+                        <TextView
+                            android:id="@+id/server_info_roster_version"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="right"
+                            android:textColor="@color/primarytext"
+                            android:textSize="?attr/TextSizeBody"
+                            tools:ignore="RtlHardcoded"/>
                     </TableRow>
 
                     <TableRow
@@ -192,11 +254,52 @@
                             android:layout_height="wrap_content"
                             android:layout_gravity="right"
                             android:textColor="@color/primarytext"
+                            android:textSize="?attr/TextSizeBody"
+                            tools:ignore="RtlHardcoded"/>
+                    </TableRow>
+
+                    <TableRow
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content" >
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/server_info_mam"
+                            android:textColor="@color/primarytext"
                             android:textSize="?attr/TextSizeBody" />
+
+                        <TextView
+                            android:id="@+id/server_info_mam"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="right"
+                            android:textColor="@color/primarytext"
+                            android:textSize="?attr/TextSizeBody"
+                            tools:ignore="RtlHardcoded"/>
+                    </TableRow>
+
+                    <TableRow
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content" >
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/server_info_csi"
+                            android:textColor="@color/primarytext"
+                            android:textSize="?attr/TextSizeBody" />
+
+                        <TextView
+                            android:id="@+id/server_info_csi"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="right"
+                            android:textColor="@color/primarytext"
+                            android:textSize="?attr/TextSizeBody"
+                            tools:ignore="RtlHardcoded"/>
                     </TableRow>
                 </TableLayout>
-
-
 
                 <RelativeLayout
                     android:layout_width="wrap_content"
@@ -235,11 +338,10 @@
                         android:layout_centerVertical="true"
                         android:background="?android:selectableItemBackground"
                         android:padding="8dp"
-                        android:src="@drawable/ic_action_copy"
-                        android:visibility="visible" />
+                        android:src="?attr/icon_copy"
+                        android:visibility="visible"
+                        android:contentDescription="@string/copy_otr_clipboard_description"/>
                 </RelativeLayout>
-
-               
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
@@ -249,6 +351,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true" >
 

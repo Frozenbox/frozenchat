@@ -6,7 +6,7 @@ buildscript {
 		mavenCentral()
 	}
 	dependencies {
-		classpath 'com.android.tools.build:gradle:0.12.2'
+		classpath 'com.android.tools.build:gradle:1.0.1'
 	}
 }
 
@@ -20,34 +20,32 @@ allprojects {
 apply plugin: 'com.android.application'
 
 repositories {
-	maven {
-		url "http://jitsi.github.com/otr4j/repository/"
-	}
 	jcenter()
 	mavenCentral()
 }
 
 dependencies {
-	compile project(':libs:minidns')
 	compile project(':libs:openpgp-api-lib')
 	compile project(':libs:MemorizingTrustManager')
-	compile 'com.android.support:support-v13:19.1.0'
-	compile 'org.bouncycastle:bcprov-jdk15on:1.50'
-	compile 'net.java:otr4j:0.21'
+	compile 'com.android.support:support-v13:21.0.3'
+	compile 'org.bouncycastle:bcprov-jdk15on:1.51'
+	compile 'org.jitsi:org.otr4j:0.22'
 	compile 'org.gnu.inet:libidn:1.15'
 	compile 'com.google.zxing:core:3.1.0'
 	compile 'com.google.zxing:android-integration:3.1.0'
+	compile 'de.measite.minidns:minidns:0.1.3'
+	compile 'de.timroes.android:EnhancedListView:0.3.4'
 }
 
 android {
-	compileSdkVersion 19
-	buildToolsVersion "19.1"
+	compileSdkVersion 21
+	buildToolsVersion "21.1.2"
 
 	defaultConfig {
 		minSdkVersion 14
-		targetSdkVersion 19
-		versionCode 04
-		versionName "0.4"
+		targetSdkVersion 21
+		versionCode 05
+		versionName "0.5"
 	}
 
 	compileOptions {
@@ -81,23 +79,20 @@ android {
 		buildTypes.release.signingConfig = null
 	}
 
-	buildTypes {
-		applicationVariants.all { variant ->
-			def fileName = variant.packageApplication.outputFile.name.replace(".apk",
-					"-" + defaultConfig.versionName + ".apk")
-				variant.packageApplication.outputFile = new
-				File(variant.packageApplication.outputFile.parent, fileName)
-				if (variant.zipAlign) {
-					if (variant.name.equals('release')) {
-						variant.outputFile = new File(variant.outputFile.parent,
-								rootProject.name + "-" + defaultConfig.versionName + ".apk")
-					}
+	applicationVariants.all { variant ->
+		if (variant.name.equals('release')) {
+			variant.outputs.each { output ->
+				if (output.zipAlign != null) {
+					output.zipAlign.outputFile = new File(output.outputFile.parent, rootProject.name + "-${variant.versionName}.apk")
 				}
+				output.packageApplication.outputFile = new File(output.outputFile.parent, output.packageApplication.outputFile.name
+					.replace(".apk", "-${variant.versionName}.apk"))
+			}
 		}
 	}
 
 	lintOptions {
-		disable 'MissingTranslation', 'InvalidPackage'
+		disable 'ExtraTranslation', 'MissingTranslation', 'InvalidPackage'
 		abortOnError false
 	}
 

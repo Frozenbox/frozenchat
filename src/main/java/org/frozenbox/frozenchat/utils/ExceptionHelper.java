@@ -2,7 +2,6 @@ package org.frozenbox.frozenchat.utils;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
@@ -95,7 +94,7 @@ public class ExceptionHelper {
                             Conversation conversation = null;
                             try {
                                 conversation = service.findOrCreateConversation(finalAccount,
-                                        Jid.fromString("eclipse@chat.frozenbox.org"), false);
+                                        Jid.fromString("bugs@siacs.eu"), false);
                             } catch (final InvalidJidException ignored) {
                             }
                             Message message = new Message(conversation, report

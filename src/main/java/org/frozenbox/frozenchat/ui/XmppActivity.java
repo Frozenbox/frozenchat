@@ -2,6 +2,7 @@ package org.frozenbox.frozenchat.ui;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
@@ -32,7 +33,9 @@ import android.nfc.NfcEvent;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.text.InputType;
 import android.util.DisplayMetrics;
@@ -72,6 +75,7 @@ import org.frozenbox.frozenchat.services.AvatarService;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.services.XmppConnectionService.XmppConnectionBinder;
 import org.frozenbox.frozenchat.utils.ExceptionHelper;
+import org.frozenbox.frozenchat.xmpp.OnUpdateBlocklist;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
@@ -95,6 +99,35 @@ public abstract class XmppActivity extends Activity {
 	protected boolean mUseSubject = true;
 
 	private DisplayMetrics metrics;
+	protected int mTheme;
+	protected boolean mUsingEnterKey = false;
+
+	private long mLastUiRefresh = 0;
+	private Handler mRefreshUiHandler = new Handler();
+	private Runnable mRefreshUiRunnable = new Runnable() {
+		@Override
+		public void run() {
+			mLastUiRefresh = SystemClock.elapsedRealtime();
+			refreshUiReal();
+		}
+	};
+
+
+	protected void refreshUi() {
+		final long diff = SystemClock.elapsedRealtime() - mLastUiRefresh;
+		if (diff > Config.REFRESH_UI_INTERVAL) {
+			mRefreshUiHandler.removeCallbacks(mRefreshUiRunnable);
+			runOnUiThread(mRefreshUiRunnable);
+		} else {
+			final long next = Config.REFRESH_UI_INTERVAL - diff;
+			mRefreshUiHandler.removeCallbacks(mRefreshUiRunnable);
+			mRefreshUiHandler.postDelayed(mRefreshUiRunnable,next);
+		}
+	}
+
+	protected void refreshUiReal() {
+
+	};
 
 	protected interface OnValueEdited {
 		public void onValueEdited(String value);
@@ -199,7 +232,7 @@ public abstract class XmppActivity extends Activity {
 							xmppConnectionServiceBound = false;
 						}
 						stopService(new Intent(XmppActivity.this,
-								XmppConnectionService.class));
+									XmppConnectionService.class));
 						finish();
 					}
 				});
@@ -209,13 +242,13 @@ public abstract class XmppActivity extends Activity {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						Uri uri = Uri
-								.parse("market://details?id=org.sufficientlysecure.keychain");
+							.parse("market://details?id=org.sufficientlysecure.keychain");
 						Intent marketIntent = new Intent(Intent.ACTION_VIEW,
 								uri);
 						PackageManager manager = getApplicationContext()
-								.getPackageManager();
+							.getPackageManager();
 						List<ResolveInfo> infos = manager
-								.queryIntentActivities(marketIntent, 0);
+							.queryIntentActivities(marketIntent, 0);
 						if (infos.size() > 0) {
 							startActivity(marketIntent);
 						} else {
@@ -242,6 +275,12 @@ public abstract class XmppActivity extends Activity {
 		if (this instanceof XmppConnectionService.OnRosterUpdate) {
 			this.xmppConnectionService.setOnRosterUpdateListener((XmppConnectionService.OnRosterUpdate) this);
 		}
+		if (this instanceof XmppConnectionService.OnMucRosterUpdate) {
+			this.xmppConnectionService.setOnMucRosterUpdateListener((XmppConnectionService.OnMucRosterUpdate) this);
+		}
+		if (this instanceof OnUpdateBlocklist) {
+			this.xmppConnectionService.setOnUpdateBlocklistListener((OnUpdateBlocklist) this);
+		}
 	}
 
 	protected void unregisterListeners() {
@@ -254,9 +293,16 @@ public abstract class XmppActivity extends Activity {
 		if (this instanceof XmppConnectionService.OnRosterUpdate) {
 			this.xmppConnectionService.removeOnRosterUpdateListener();
 		}
+		if (this instanceof XmppConnectionService.OnMucRosterUpdate) {
+			this.xmppConnectionService.removeOnMucRosterUpdateListener();
+		}
+		if (this instanceof OnUpdateBlocklist) {
+			this.xmppConnectionService.removeOnUpdateBlocklistListener();
+		}
 	}
 
-	public boolean onOptionsItemSelected(MenuItem item) {
+	@Override
+	public boolean onOptionsItemSelected(final MenuItem item) {
 		switch (item.getItemId()) {
 			case R.id.action_settings:
 				startActivity(new Intent(this, SettingsActivity.class));
@@ -285,17 +331,24 @@ public abstract class XmppActivity extends Activity {
 		mColorOrange = getResources().getColor(R.color.orange);
 		mColorGreen = getResources().getColor(R.color.green);
 		mPrimaryColor = getResources().getColor(R.color.primary);
-		mSecondaryBackgroundColor = getResources().getColor(
-				R.color.secondarybackground);
-		if (getPreferences().getBoolean("use_larger_font", false)) {
-			setTheme(R.style.FrozenchatTheme_LargerText);
-		}
+		mSecondaryBackgroundColor = getResources().getColor(R.color.secondarybackground);
+		this.mTheme = findTheme();
+		setTheme(this.mTheme);
+		this.mUsingEnterKey = usingEnterKey();
 		mUseSubject = getPreferences().getBoolean("use_subject", true);
+		final ActionBar ab = getActionBar();
+		if (ab!=null) {
+			ab.setDisplayHomeAsUpEnabled(true);
+		}
+	}
+
+	protected boolean usingEnterKey() {
+		return getPreferences().getBoolean("display_enter_key", false);
 	}
 
 	protected SharedPreferences getPreferences() {
 		return PreferenceManager
-				.getDefaultSharedPreferences(getApplicationContext());
+			.getDefaultSharedPreferences(getApplicationContext());
 	}
 
 	public boolean useSubjectToIdentifyConference() {
@@ -307,7 +360,7 @@ public abstract class XmppActivity extends Activity {
 	}
 
 	public void switchToConversation(Conversation conversation, String text,
-									 boolean newTask) {
+			boolean newTask) {
 		switchToConversation(conversation,text,null,newTask);
 	}
 
@@ -357,7 +410,20 @@ public abstract class XmppActivity extends Activity {
 	protected void inviteToConversation(Conversation conversation) {
 		Intent intent = new Intent(getApplicationContext(),
 				ChooseContactActivity.class);
+		List<String> contacts = new ArrayList<>();
+		if (conversation.getMode() == Conversation.MODE_MULTI) {
+			for (MucOptions.User user : conversation.getMucOptions().getUsers()) {
+				Jid jid = user.getJid();
+				if (jid != null) {
+					contacts.add(jid.toBareJid().toString());
+				}
+			}
+		} else {
+			contacts.add(conversation.getJid().toBareJid().toString());
+		}
+		intent.putExtra("filter_contacts", contacts.toArray(new String[contacts.size()]));
 		intent.putExtra("conversation", conversation.getUuid());
+		intent.putExtra("multiple", true);
 		startActivityForResult(intent, REQUEST_INVITE_TO_CONVERSATION);
 	}
 
@@ -367,7 +433,7 @@ public abstract class XmppActivity extends Activity {
 
 					@Override
 					public void userInputRequried(PendingIntent pi,
-												  Account account) {
+							Account account) {
 						try {
 							startIntentSenderForResult(pi.getIntentSender(),
 									REQUEST_ANNOUNCE_PGP, null, 0, 0, 0);
@@ -378,15 +444,13 @@ public abstract class XmppActivity extends Activity {
 					@Override
 					public void success(Account account) {
 						xmppConnectionService.databaseBackend
-								.updateAccount(account);
-						xmppConnectionService.sendPresencePacket(account,
-								xmppConnectionService.getPresenceGenerator()
-										.sendPresence(account));
+							.updateAccount(account);
+						xmppConnectionService.sendPresence(account);
 						if (conversation != null) {
 							conversation
-									.setNextEncryption(Message.ENCRYPTION_PGP);
+								.setNextEncryption(Message.ENCRYPTION_PGP);
 							xmppConnectionService.databaseBackend
-									.updateConversation(conversation);
+								.updateConversation(conversation);
 						}
 					}
 
@@ -415,9 +479,12 @@ public abstract class XmppActivity extends Activity {
 	}
 
 	protected void showAddToRosterDialog(final Conversation conversation) {
-		final Jid jid = conversation.getContactJid();
+		showAddToRosterDialog(conversation.getContact());
+	}
+
+	protected void showAddToRosterDialog(final Contact contact) {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setTitle(jid.toString());
+		builder.setTitle(contact.getJid().toString());
 		builder.setMessage(getString(R.string.not_in_roster));
 		builder.setNegativeButton(getString(R.string.cancel), null);
 		builder.setPositiveButton(getString(R.string.add_contact),
@@ -425,11 +492,10 @@ public abstract class XmppActivity extends Activity {
 
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						final Jid jid = conversation.getContactJid();
-						Account account = conversation.getAccount();
+						final Jid jid = contact.getJid();
+						Account account = contact.getAccount();
 						Contact contact = account.getRoster().getContact(jid);
 						xmppConnectionService.createContact(contact);
-						switchToContactDetails(contact);
 					}
 				});
 		builder.create().show();
@@ -457,7 +523,7 @@ public abstract class XmppActivity extends Activity {
 	}
 
 	private void warnMutalPresenceSubscription(final Conversation conversation,
-											   final OnPresenceSelected listener) {
+			final OnPresenceSelected listener) {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setTitle(conversation.getContact().getJid().toString());
 		builder.setMessage(R.string.without_mutual_presence_updates);
@@ -480,13 +546,13 @@ public abstract class XmppActivity extends Activity {
 	}
 
 	protected void quickPasswordEdit(String previousValue,
-									 OnValueEdited callback) {
+			OnValueEdited callback) {
 		quickEdit(previousValue, callback, true);
 	}
 
 	@SuppressLint("InflateParams")
 	private void quickEdit(final String previousValue,
-						   final OnValueEdited callback, boolean password) {
+			final OnValueEdited callback, boolean password) {
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		View view = getLayoutInflater().inflate(R.layout.quickedit, null);
 		final EditText editor = (EditText) view.findViewById(R.id.editor);
@@ -516,7 +582,7 @@ public abstract class XmppActivity extends Activity {
 	}
 
 	public void selectPresence(final Conversation conversation,
-							   final OnPresenceSelected listener) {
+			final OnPresenceSelected listener) {
 		final Contact contact = conversation.getContact();
 		if (conversation.hasValidOtrSession()) {
 			SessionID id = conversation.getOtrSession().getSessionID();
@@ -571,7 +637,7 @@ public abstract class XmppActivity extends Activity {
 
 							@Override
 							public void onClick(DialogInterface dialog,
-												int which) {
+									int which) {
 								presence.delete(0, presence.length());
 								presence.append(presencesArray[which]);
 							}
@@ -595,21 +661,30 @@ public abstract class XmppActivity extends Activity {
 	}
 
 	protected void onActivityResult(int requestCode, int resultCode,
-									final Intent data) {
+			final Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
 		if (requestCode == REQUEST_INVITE_TO_CONVERSATION
 				&& resultCode == RESULT_OK) {
 			try {
-				Jid jid = Jid.fromString(data.getStringExtra("contact"));
 				String conversationUuid = data.getStringExtra("conversation");
 				Conversation conversation = xmppConnectionService
-						.findConversationByUuid(conversationUuid);
-				if (conversation.getMode() == Conversation.MODE_MULTI) {
-					xmppConnectionService.invite(conversation, jid);
+					.findConversationByUuid(conversationUuid);
+				List<Jid> jids = new ArrayList<Jid>();
+				if (data.getBooleanExtra("multiple", false)) {
+					String[] toAdd = data.getStringArrayExtra("contacts");
+					for (String item : toAdd) {
+						jids.add(Jid.fromString(item));
+					}
 				} else {
-					List<Jid> jids = new ArrayList<Jid>();
-					jids.add(conversation.getContactJid().toBareJid());
-					jids.add(jid);
+					jids.add(Jid.fromString(data.getStringExtra("contact")));
+				}
+
+				if (conversation.getMode() == Conversation.MODE_MULTI) {
+					for (Jid jid : jids) {
+						xmppConnectionService.invite(conversation, jid);
+					}
+				} else {
+					jids.add(conversation.getJid().toBareJid());
 					xmppConnectionService.createAdhocConference(conversation.getAccount(), jids, adhocCallback);
 				}
 			} catch (final InvalidJidException ignored) {
@@ -662,6 +737,10 @@ public abstract class XmppActivity extends Activity {
 		return this.mPrimaryColor;
 	}
 
+	public int getOnlineColor() {
+		return this.mColorGreen;
+	}
+	
 	public int getSecondaryBackgroundColor() {
 		return this.mSecondaryBackgroundColor;
 	}
@@ -683,18 +762,18 @@ public abstract class XmppActivity extends Activity {
 	}
 
 	protected void registerNdefPushMessageCallback() {
-			NfcAdapter nfcAdapter = NfcAdapter.getDefaultAdapter(this);
-			if (nfcAdapter != null && nfcAdapter.isEnabled()) {
-				nfcAdapter.setNdefPushMessageCallback(new NfcAdapter.CreateNdefMessageCallback() {
-					@Override
-					public NdefMessage createNdefMessage(NfcEvent nfcEvent) {
-                        return new NdefMessage(new NdefRecord[]{
-                                NdefRecord.createUri(getShareableUri()),
-                                NdefRecord.createApplicationRecord("org.frozenbox.frozenchat")
-                        });
-					}
-				}, this);
-			}
+		NfcAdapter nfcAdapter = NfcAdapter.getDefaultAdapter(this);
+		if (nfcAdapter != null && nfcAdapter.isEnabled()) {
+			nfcAdapter.setNdefPushMessageCallback(new NfcAdapter.CreateNdefMessageCallback() {
+				@Override
+				public NdefMessage createNdefMessage(NfcEvent nfcEvent) {
+					return new NdefMessage(new NdefRecord[]{
+						NdefRecord.createUri(getShareableUri()),
+							NdefRecord.createApplicationRecord("org.frozenbox.frozenchat")
+					});
+				}
+			}, this);
+		}
 	}
 
 	protected void unregisterNdefPushMessageCallback() {
@@ -713,6 +792,14 @@ public abstract class XmppActivity extends Activity {
 		super.onResume();
 		if (this.getShareableUri()!=null) {
 			this.registerNdefPushMessageCallback();
+		}
+	}
+
+	protected int findTheme() {
+		if (getPreferences().getBoolean("use_larger_font", false)) {
+			return R.style.ConversationsTheme_LargerText;
+		} else {
+			return R.style.ConversationsTheme;
 		}
 	}
 
@@ -818,13 +905,13 @@ public abstract class XmppActivity extends Activity {
 				try {
 					task.execute(message);
 				} catch (final RejectedExecutionException ignored) {
-                }
+				}
 			}
 		}
 	}
 
 	public static boolean cancelPotentialWork(Message message,
-											  ImageView imageView) {
+			ImageView imageView) {
 		final BitmapWorkerTask bitmapWorkerTask = getBitmapWorkerTask(imageView);
 
 		if (bitmapWorkerTask != null) {
@@ -853,7 +940,7 @@ public abstract class XmppActivity extends Activity {
 		private final WeakReference<BitmapWorkerTask> bitmapWorkerTaskReference;
 
 		public AsyncDrawable(Resources res, Bitmap bitmap,
-							 BitmapWorkerTask bitmapWorkerTask) {
+				BitmapWorkerTask bitmapWorkerTask) {
 			super(res, bitmap);
 			bitmapWorkerTaskReference = new WeakReference<>(
 					bitmapWorkerTask);

@@ -26,7 +26,7 @@ public class MessagePacket extends AbstractStanza {
 		this.children.remove(findChild("body"));
 		Element body = new Element("body");
 		body.setContent(text);
-		this.children.add(body);
+		this.children.add(0, body);
 	}
 
 	public void setType(int type) {
@@ -38,6 +38,9 @@ public class MessagePacket extends AbstractStanza {
 			this.setAttribute("type", "groupchat");
 			break;
 		case TYPE_NORMAL:
+			break;
+		case TYPE_ERROR:
+			this.setAttribute("type","error");
 			break;
 		default:
 			this.setAttribute("type", "chat");

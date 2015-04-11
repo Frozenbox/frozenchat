@@ -4,17 +4,77 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.frozenbox.frozenchat.Config;
+import org.frozenbox.frozenchat.R;
 import org.frozenbox.frozenchat.crypto.PgpEngine;
 import org.frozenbox.frozenchat.xml.Element;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 import org.frozenbox.frozenchat.xmpp.stanzas.PresencePacket;
+
 import android.annotation.SuppressLint;
-import android.util.Log;
 
 @SuppressLint("DefaultLocale")
 public class MucOptions {
+
+	public enum Affiliation {
+		OWNER("owner", 4, R.string.owner),
+		ADMIN("admin", 3, R.string.admin),
+		MEMBER("member", 2, R.string.member),
+		OUTCAST("outcast", 0, R.string.outcast),
+		NONE("none", 1, R.string.no_affiliation);
+
+		private Affiliation(String string, int rank, int resId) {
+			this.string = string;
+			this.resId = resId;
+			this.rank = rank;
+		}
+
+		private String string;
+		private int resId;
+		private int rank;
+
+		public int getResId() {
+			return resId;
+		}
+
+		@Override
+		public String toString() {
+			return this.string;
+		}
+
+		public boolean outranks(Affiliation affiliation) {
+			return rank > affiliation.rank;
+		}
+
+		public boolean ranks(Affiliation affiliation) {
+			return rank >= affiliation.rank;
+		}
+	}
+
+	public enum Role {
+		MODERATOR("moderator", R.string.moderator),
+		VISITOR("visitor", R.string.visitor),
+		PARTICIPANT("participant", R.string.participant),
+		NONE("none", R.string.no_role);
+
+		private Role(String string, int resId) {
+			this.string = string;
+			this.resId = resId;
+		}
+
+		private String string;
+		private int resId;
+
+		public int getResId() {
+			return resId;
+		}
+
+		@Override
+		public String toString() {
+			return this.string;
+		}
+	}
+
 	public static final int ERROR_NO_ERROR = 0;
 	public static final int ERROR_NICK_IN_USE = 1;
 	public static final int ERROR_UNKNOWN = 2;
@@ -24,13 +84,16 @@ public class MucOptions {
 
 	public static final int KICKED_FROM_ROOM = 9;
 
+	public static final String STATUS_CODE_ROOM_CONFIG_CHANGED = "104";
 	public static final String STATUS_CODE_SELF_PRESENCE = "110";
 	public static final String STATUS_CODE_BANNED = "301";
 	public static final String STATUS_CODE_CHANGED_NICK = "303";
 	public static final String STATUS_CODE_KICKED = "307";
+	public static final String STATUS_CODE_LOST_MEMBERSHIP = "321";
 
 	private interface OnEventListener {
 		public void onSuccess();
+
 		public void onFailure();
 	}
 
@@ -43,18 +106,8 @@ public class MucOptions {
 	}
 
 	public class User {
-		public static final int ROLE_MODERATOR = 3;
-		public static final int ROLE_NONE = 0;
-		public static final int ROLE_PARTICIPANT = 2;
-		public static final int ROLE_VISITOR = 1;
-		public static final int AFFILIATION_ADMIN = 4;
-		public static final int AFFILIATION_OWNER = 3;
-		public static final int AFFILIATION_MEMBER = 2;
-		public static final int AFFILIATION_OUTCAST = 1;
-		public static final int AFFILIATION_NONE = 0;
-
-		private int role;
-		private int affiliation;
+		private Role role = Role.NONE;
+		private Affiliation affiliation = Affiliation.NONE;
 		private String name;
 		private Jid jid;
 		private long pgpKeyId = 0;
@@ -75,43 +128,64 @@ public class MucOptions {
 			return this.jid;
 		}
 
-		public int getRole() {
+		public Role getRole() {
 			return this.role;
 		}
 
 		public void setRole(String role) {
 			role = role.toLowerCase();
-            switch (role) {
-                case "moderator":
-                    this.role = ROLE_MODERATOR;
-                    break;
-                case "participant":
-                    this.role = ROLE_PARTICIPANT;
-                    break;
-                case "visitor":
-                    this.role = ROLE_VISITOR;
-                    break;
-                default:
-                    this.role = ROLE_NONE;
-                    break;
-            }
+			switch (role) {
+				case "moderator":
+					this.role = Role.MODERATOR;
+					break;
+				case "participant":
+					this.role = Role.PARTICIPANT;
+					break;
+				case "visitor":
+					this.role = Role.VISITOR;
+					break;
+				default:
+					this.role = Role.NONE;
+					break;
+			}
 		}
 
-		public int getAffiliation() {
+		@Override
+		public boolean equals(Object other) {
+			if (this == other) {
+				return true;
+			} else if (!(other instanceof User)) {
+				return false;
+			} else {
+				User o = (User) other;
+				return name != null && name.equals(o.name)
+						&& jid != null && jid.equals(o.jid)
+						&& affiliation == o.affiliation
+						&& role == o.role;
+			}
+		}
+
+		public Affiliation getAffiliation() {
 			return this.affiliation;
 		}
 
 		public void setAffiliation(String affiliation) {
-			if (affiliation.equalsIgnoreCase("admin")) {
-				this.affiliation = AFFILIATION_ADMIN;
-			} else if (affiliation.equalsIgnoreCase("owner")) {
-				this.affiliation = AFFILIATION_OWNER;
-			} else if (affiliation.equalsIgnoreCase("member")) {
-				this.affiliation = AFFILIATION_MEMBER;
-			} else if (affiliation.equalsIgnoreCase("outcast")) {
-				this.affiliation = AFFILIATION_OUTCAST;
-			} else {
-				this.affiliation = AFFILIATION_NONE;
+			affiliation = affiliation.toLowerCase();
+			switch (affiliation) {
+				case "admin":
+					this.affiliation = Affiliation.ADMIN;
+					break;
+				case "owner":
+					this.affiliation = Affiliation.OWNER;
+					break;
+				case "member":
+					this.affiliation = Affiliation.MEMBER;
+					break;
+				case "outcast":
+					this.affiliation = Affiliation.OUTCAST;
+					break;
+				default:
+					this.affiliation = Affiliation.NONE;
 			}
 		}
 
@@ -130,6 +204,7 @@ public class MucOptions {
 
 	private Account account;
 	private List<User> users = new CopyOnWriteArrayList<>();
+	private List<String> features = new ArrayList<>();
 	private Conversation conversation;
 	private boolean isOnline = false;
 	private int error = ERROR_UNKNOWN;
@@ -143,6 +218,31 @@ public class MucOptions {
 	public MucOptions(Conversation conversation) {
 		this.account = conversation.getAccount();
 		this.conversation = conversation;
+	}
+
+	public void updateFeatures(ArrayList<String> features) {
+		this.features.clear();
+		this.features.addAll(features);
+	}
+
+	public boolean hasFeature(String feature) {
+		return this.features.contains(feature);
+	}
+
+	public boolean canInvite() {
+		 return !membersOnly() || self.getAffiliation().ranks(Affiliation.ADMIN);
+	}
+
+	public boolean membersOnly() {
+		return hasFeature("muc_membersonly");
+	}
+
+	public boolean nonanonymous() {
+		return hasFeature("muc_nonanonymous");
+	}
+
+	public boolean persistent() {
+		return hasFeature("muc_persistent");
 	}
 
 	public void deleteUser(String name) {
@@ -165,22 +265,22 @@ public class MucOptions {
 	}
 
 	public void processPacket(PresencePacket packet, PgpEngine pgp) {
-        final Jid from = packet.getFrom();
+		final Jid from = packet.getFrom();
 		if (!from.isBareJid()) {
 			final String name = from.getResourcepart();
 			final String type = packet.getAttribute("type");
-			final Element x = packet.findChild("x","http://jabber.org/protocol/muc#user");
+			final Element x = packet.findChild("x", "http://jabber.org/protocol/muc#user");
 			final List<String> codes = getStatusCodes(x);
 			if (type == null) {
 				User user = new User();
 				if (x != null) {
 					Element item = x.findChild("item");
-					if (item != null) {
+					if (item != null && name != null) {
 						user.setName(name);
 						user.setAffiliation(item.getAttribute("affiliation"));
 						user.setRole(item.getAttribute("role"));
 						user.setJid(item.getAttributeAsJid("jid"));
-						if (codes.contains(STATUS_CODE_SELF_PRESENCE)) {
+						if (codes.contains(STATUS_CODE_SELF_PRESENCE) || packet.getFrom().equals(this.conversation.getJid())) {
 							this.isOnline = true;
 							this.error = ERROR_NO_ERROR;
 							self = user;
@@ -210,18 +310,23 @@ public class MucOptions {
 						}
 					}
 				}
-			} else if (type.equals("unavailable") && codes.contains(STATUS_CODE_SELF_PRESENCE)) {
-				if (codes.contains(STATUS_CODE_CHANGED_NICK)) {
-					this.mNickChangingInProgress = true;
-				} else if (codes.contains(STATUS_CODE_KICKED)) {
-					setError(KICKED_FROM_ROOM);
-				} else if (codes.contains(STATUS_CODE_BANNED)) {
-					setError(ERROR_BANNED);
-				} else {
-					setError(ERROR_UNKNOWN);
-				}
 			} else if (type.equals("unavailable")) {
-				deleteUser(name);
+				if (codes.contains(STATUS_CODE_SELF_PRESENCE) ||
+						packet.getFrom().equals(this.conversation.getJid())) {
+					if (codes.contains(STATUS_CODE_CHANGED_NICK)) {
+						this.mNickChangingInProgress = true;
+					} else if (codes.contains(STATUS_CODE_KICKED)) {
+						setError(KICKED_FROM_ROOM);
+					} else if (codes.contains(STATUS_CODE_BANNED)) {
+						setError(ERROR_BANNED);
+					} else if (codes.contains(STATUS_CODE_LOST_MEMBERSHIP)) {
+						setError(ERROR_MEMBERS_ONLY);
+					} else {
+						setError(ERROR_UNKNOWN);
+					}
+				} else {
+					deleteUser(name);
+				}
 			} else if (type.equals("error")) {
 				Element error = packet.findChild("error");
 				if (error != null && error.hasChild("conflict")) {
@@ -255,12 +360,12 @@ public class MucOptions {
 	}
 
 	private List<String> getStatusCodes(Element x) {
-		List<String> codes = new ArrayList<String>();
+		List<String> codes = new ArrayList<>();
 		if (x != null) {
-			for(Element child : x.getChildren()) {
+			for (Element child : x.getChildren()) {
 				if (child.getName().equals("status")) {
 					String code = child.getAttribute("code");
-					if (code!=null) {
+					if (code != null) {
 						codes.add(code);
 					}
 				}
@@ -275,14 +380,13 @@ public class MucOptions {
 
 	public String getProposedNick() {
 		if (conversation.getBookmark() != null
-				&& conversation.getBookmark().getNick() != null) {
+				&& conversation.getBookmark().getNick() != null
+				&& !conversation.getBookmark().getNick().isEmpty()) {
 			return conversation.getBookmark().getNick();
+		} else if (!conversation.getJid().isBareJid()) {
+			return conversation.getJid().getResourcepart();
 		} else {
-			if (!conversation.getContactJid().isBareJid()) {
-				return conversation.getContactJid().getResourcepart();
-			} else {
-				return account.getUsername();
-			}
+			return account.getUsername();
 		}
 	}
 
@@ -331,14 +435,14 @@ public class MucOptions {
 	public String createNameFromParticipants() {
 		if (users.size() >= 2) {
 			List<String> names = new ArrayList<String>();
-				for (User user : users) {
-					Contact contact = user.getContact();
-					if (contact != null && !contact.getDisplayName().isEmpty()) {
-						names.add(contact.getDisplayName().split("\\s+")[0]);
-					} else {
-						names.add(user.getName());
-					}
+			for (User user : users) {
+				Contact contact = user.getContact();
+				if (contact != null && !contact.getDisplayName().isEmpty()) {
+					names.add(contact.getDisplayName().split("\\s+")[0]);
+				} else {
+					names.add(user.getName());
 				}
+			}
 			StringBuilder builder = new StringBuilder();
 			for (int i = 0; i < names.size(); ++i) {
 				builder.append(names.get(i));
@@ -385,12 +489,12 @@ public class MucOptions {
 	}
 
 	public Jid createJoinJid(String nick) {
-        try {
-            return Jid.fromString(this.conversation.getContactJid().toBareJid().toString() + "/"+nick);
-        } catch (final InvalidJidException e) {
-            return null;
-        }
-    }
+		try {
+			return Jid.fromString(this.conversation.getJid().toBareJid().toString() + "/" + nick);
+		} catch (final InvalidJidException e) {
+			return null;
+		}
+	}
 
 	public Jid getTrueCounterpart(String counterpart) {
 		for (User user : this.getUsers()) {

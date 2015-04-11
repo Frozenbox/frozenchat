@@ -49,9 +49,16 @@ public class PresenceGenerator extends AbstractGenerator {
 			Element cap = packet.addChild("c",
 					"http://jabber.org/protocol/caps");
 			cap.setAttribute("hash", "sha-1");
-			cap.setAttribute("node", "http://chat.frozenbox.org");
+			cap.setAttribute("node", "http://conversions.im");
 			cap.setAttribute("ver", capHash);
 		}
+		return packet;
+	}
+
+	public PresencePacket sendOfflinePresence(Account account) {
+		PresencePacket packet = new PresencePacket();
+		packet.setFrom(account.getJid());
+		packet.setAttribute("type","unavailable");
 		return packet;
 	}
 }

@@ -10,9 +10,12 @@ import net.java.otr4j.crypto.OtrCryptoException;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.PublicKey;
 import java.security.interfaces.DSAPublicKey;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.frozenbox.frozenchat.Config;
 import org.frozenbox.frozenchat.R;
@@ -56,7 +59,7 @@ public class Account extends AbstractEntity {
 		SECURITY_ERROR(true),
 		INCOMPATIBLE_SERVER(true);
 
-		private boolean isError;
+		private final boolean isError;
 
 		public boolean isError() {
 			return this.isError;
@@ -116,11 +119,11 @@ public class Account extends AbstractEntity {
 	protected boolean online = false;
 	private OtrEngine otrEngine = null;
 	private XmppConnection xmppConnection = null;
-	private Presences presences = new Presences();
 	private long mEndGracePeriod = 0L;
 	private String otrFingerprint;
-	private Roster roster = null;
+	private final Roster roster = new Roster(this);
 	private List<Bookmark> bookmarks = new CopyOnWriteArrayList<>();
+	private final Collection<Jid> blocklist = new CopyOnWriteArraySet<>();
 
 	public Account() {
 		this.uuid = "0";
@@ -145,12 +148,12 @@ public class Account extends AbstractEntity {
 		try {
 			this.keys = new JSONObject(keys);
 		} catch (final JSONException ignored) {
-
+			this.keys = new JSONObject();
 		}
 		this.avatar = avatar;
 	}
 
-	public static Account fromCursor(Cursor cursor) {
+	public static Account fromCursor(final Cursor cursor) {
 		Jid jid = null;
 		try {
 			jid = Jid.fromParts(cursor.getString(cursor.getColumnIndex(USERNAME)),
@@ -166,11 +169,11 @@ public class Account extends AbstractEntity {
 				cursor.getString(cursor.getColumnIndex(AVATAR)));
 	}
 
-	public boolean isOptionSet(int option) {
+	public boolean isOptionSet(final int option) {
 		return ((options & (1 << option)) != 0);
 	}
 
-	public void setOption(int option, boolean value) {
+	public void setOption(final int option, final boolean value) {
 		if (value) {
 			this.options |= 1 << option;
 		} else {
@@ -226,11 +229,17 @@ public class Account extends AbstractEntity {
 		return jid.getResourcepart();
 	}
 
-	public void setResource(final String resource) {
-		try {
-			jid = Jid.fromParts(jid.getLocalpart(), jid.getDomainpart(), resource);
-		} catch (final InvalidJidException ignored) {
+	public boolean setResource(final String resource) {
+		final String oldResource = jid.getResourcepart();
+		if (oldResource == null || !oldResource.equals(resource)) {
+			try {
+				jid = Jid.fromParts(jid.getLocalpart(), jid.getDomainpart(), resource);
+				return true;
+			} catch (final InvalidJidException ignored) {
+				return true;
+			}
 		}
+		return false;
 	}
 
 	public Jid getJid() {
@@ -241,34 +250,18 @@ public class Account extends AbstractEntity {
 		return keys;
 	}
 
-	public String getSSLFingerprint() {
-		if (keys.has("ssl_cert")) {
-			try {
-				return keys.getString("ssl_cert");
-			} catch (JSONException e) {
-				return null;
-			}
-		} else {
-			return null;
-		}
-	}
-
-	public void setSSLCertFingerprint(String fingerprint) {
-		this.setKey("ssl_cert", fingerprint);
-	}
-
-	public boolean setKey(String keyName, String keyValue) {
+	public boolean setKey(final String keyName, final String keyValue) {
 		try {
 			this.keys.put(keyName, keyValue);
 			return true;
-		} catch (JSONException e) {
+		} catch (final JSONException e) {
 			return false;
 		}
 	}
 
 	@Override
 	public ContentValues getContentValues() {
-		ContentValues values = new ContentValues();
+		final ContentValues values = new ContentValues();
 		values.put(UUID, uuid);
 		values.put(USERNAME, jid.getLocalpart());
 		values.put(SERVER, jid.getDomainpart());
@@ -280,7 +273,7 @@ public class Account extends AbstractEntity {
 		return values;
 	}
 
-	public void initOtrEngine(XmppConnectionService context) {
+	public void initOtrEngine(final XmppConnectionService context) {
 		this.otrEngine = new OtrEngine(context, this);
 	}
 
@@ -292,7 +285,7 @@ public class Account extends AbstractEntity {
 		return this.xmppConnection;
 	}
 
-	public void setXmppConnection(XmppConnection connection) {
+	public void setXmppConnection(final XmppConnection connection) {
 		this.xmppConnection = connection;
 	}
 
@@ -302,8 +295,8 @@ public class Account extends AbstractEntity {
 				if (this.otrEngine == null) {
 					return null;
 				}
-				DSAPublicKey publicKey = (DSAPublicKey) this.otrEngine.getPublicKey();
-				if (publicKey == null) {
+				final PublicKey publicKey = this.otrEngine.getPublicKey();
+				if (publicKey == null || !(publicKey instanceof DSAPublicKey)) {
 					return null;
 				}
 				this.otrFingerprint = new OtrCryptoEngineImpl().getFingerprint(publicKey);
@@ -324,31 +317,19 @@ public class Account extends AbstractEntity {
 		}
 	}
 
-	public void setRosterVersion(String version) {
+	public void setRosterVersion(final String version) {
 		this.rosterVersion = version;
 	}
 
-	public void updatePresence(String resource, int status) {
-		this.presences.updatePresence(resource, status);
-	}
-
-	public void removePresence(String resource) {
-		this.presences.removePresence(resource);
-	}
-
-	public void clearPresences() {
-		this.presences = new Presences();
-	}
-
 	public int countPresences() {
-		return this.presences.size();
+		return this.getRoster().getContact(this.getJid().toBareJid()).getPresences().size();
 	}
 
 	public String getPgpSignature() {
 		if (keys.has("pgp_signature")) {
 			try {
 				return keys.getString("pgp_signature");
-			} catch (JSONException e) {
+			} catch (final JSONException e) {
 				return null;
 			}
 		} else {
@@ -357,9 +338,6 @@ public class Account extends AbstractEntity {
 	}
 
 	public Roster getRoster() {
-		if (this.roster == null) {
-			this.roster = new Roster(this);
-		}
 		return this.roster;
 	}
 
@@ -367,20 +345,21 @@ public class Account extends AbstractEntity {
 		return this.bookmarks;
 	}
 
-	public void setBookmarks(List<Bookmark> bookmarks) {
+	public void setBookmarks(final List<Bookmark> bookmarks) {
 		this.bookmarks = bookmarks;
 	}
 
 	public boolean hasBookmarkFor(final Jid conferenceJid) {
-		for (Bookmark bmark : this.bookmarks) {
-			if (bmark.getJid().equals(conferenceJid.toBareJid())) {
+		for (final Bookmark bookmark : this.bookmarks) {
+			final Jid jid = bookmark.getJid();
+			if (jid != null && jid.equals(conferenceJid.toBareJid())) {
 				return true;
 			}
 		}
 		return false;
 	}
 
-	public boolean setAvatar(String filename) {
+	public boolean setAvatar(final String filename) {
 		if (this.avatar != null && this.avatar.equals(filename)) {
 			return false;
 		} else {
@@ -407,11 +386,32 @@ public class Account extends AbstractEntity {
 	}
 
 	public String getShareableUri() {
-		String fingerprint = this.getOtrFingerprint();
+		final String fingerprint = this.getOtrFingerprint();
 		if (fingerprint != null) {
 			return "xmpp:" + this.getJid().toBareJid().toString() + "?otr-fingerprint="+fingerprint;
 		} else {
 			return "xmpp:" + this.getJid().toBareJid().toString();
 		}
+	}
+
+	public boolean isBlocked(final ListItem contact) {
+		final Jid jid = contact.getJid();
+		return jid != null && (blocklist.contains(jid.toBareJid()) || blocklist.contains(jid.toDomainJid()));
+	}
+
+	public boolean isBlocked(final Jid jid) {
+		return jid != null && blocklist.contains(jid.toBareJid());
+	}
+
+	public Collection<Jid> getBlocklist() {
+		return this.blocklist;
+	}
+
+	public void clearBlocklist() {
+		getBlocklist().clear();
+	}
+
+	public boolean isOnlineAndConnected() {
+		return this.getStatus() == State.ONLINE && this.getXmppConnection() != null;
 	}
 }

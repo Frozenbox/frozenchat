@@ -6,7 +6,6 @@ import java.util.Locale;
 
 import org.frozenbox.frozenchat.utils.UIHelper;
 import org.frozenbox.frozenchat.xml.Element;
-import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
 public class Bookmark extends Element implements ListItem {
@@ -60,16 +59,7 @@ public class Bookmark extends Element implements ListItem {
 
 	@Override
 	public Jid getJid() {
-		final String jid = this.getAttribute("jid");
-		if (jid != null) {
-			try {
-				return Jid.fromString(jid);
-			} catch (final InvalidJidException e) {
-				return null;
-			}
-		} else {
-			return null;
-		}
+		return this.getAttributeAsJid("jid");
 	}
 
 	@Override
@@ -102,9 +92,7 @@ public class Bookmark extends Element implements ListItem {
 	}
 
 	public boolean autojoin() {
-		String autojoin = this.getAttribute("autojoin");
-		return (autojoin != null && (autojoin.equalsIgnoreCase("true") || autojoin
-				.equalsIgnoreCase("1")));
+		return this.getAttributeAsBoolean("autojoin");
 	}
 
 	public String getPassword() {
@@ -128,7 +116,8 @@ public class Bookmark extends Element implements ListItem {
 			return true;
 		}
 		needle = needle.toLowerCase(Locale.US);
-		return getJid().toString().contains(needle) ||
+		final Jid jid = getJid();
+		return (jid != null && jid.toString().contains(needle)) ||
 			getDisplayName().toLowerCase(Locale.US).contains(needle) ||
 			matchInTag(needle);
 	}

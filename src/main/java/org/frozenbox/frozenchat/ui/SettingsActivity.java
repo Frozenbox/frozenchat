@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.Locale;
 
 import org.frozenbox.frozenchat.entities.Account;
-import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
+import org.frozenbox.frozenchat.xmpp.XmppConnection;
 
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
@@ -64,14 +64,27 @@ public class SettingsActivity extends XmppActivity implements
 					.toLowerCase(Locale.US);
 			if (xmppConnectionServiceBound) {
 				for (Account account : xmppConnectionService.getAccounts()) {
-                    account.setResource(resource);
-                    if (!account.isOptionSet(Account.OPTION_DISABLED)) {
-						xmppConnectionService.reconnectAccount(account, false);
+					if (account.setResource(resource)) {
+						if (!account.isOptionSet(Account.OPTION_DISABLED)) {
+							XmppConnection connection = account.getXmppConnection();
+							if (connection != null) {
+								connection.resetStreamId();
+							}
+							xmppConnectionService.reconnectAccountInBackground(account);
+						}
 					}
 				}
 			}
 		} else if (name.equals("keep_foreground_service")) {
 			xmppConnectionService.toggleForegroundService();
+		} else if (name.equals("confirm_messages")) {
+			if (xmppConnectionServiceBound) {
+				for (Account account : xmppConnectionService.getAccounts()) {
+					if (!account.isOptionSet(Account.OPTION_DISABLED)) {
+						xmppConnectionService.sendPresence(account);
+					}
+				}
+			}
 		}
 	}
 

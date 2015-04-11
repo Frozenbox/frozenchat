@@ -1,5 +1,66 @@
 ###Changelog
 
+####Version 1.2.0
+* Send current location. (requires [plugin](https://play.google.com/store/apps/details?id=org.frozenbox.frozenchat.sharelocation))
+* Invite multiple contacts at once
+* performance improvements
+* bug fixes
+
+####Version 1.1.0
+* Typing notifications (must be turned on in settings)
+* Various UI performance improvements
+* bug fixes
+
+####Version 1.0.4
+* load avatars asynchronously on start up
+* support for XEP-0092: Software Version
+
+####Version 1.0.3
+* load messages asynchronously on start up
+* bug fixes
+
+####Version 1.0.2
+* skipped
+
+####Version 1.0.1
+* accept more ciphers
+
+####Version 1.0
+* MUC controls (Affiliaton changes)
+* Added download button to notification
+* Added check box to hide offline contacts
+* Use Material theme and icons on Android L
+* Improved security
+* bug fixes + code clean up
+
+####Version 0.10
+* Support for Message Archive Management
+* Dynamically load message history
+* Ability to block contacts
+* New UI to verify fingerprints
+* Ability to change password on server
+* removed stream compression
+* quiet hours
+* fixed connection issues on ipv6 servers
+
+####Version 0.9.3
+* bug fixes
+
+####Version 0.9.2
+* more bug fixes
+
+####Version 0.9.1
+* bug fixes including some that caused Conversations to crash on start
+
+####Version 0.9
+* arbitrary file transfer
+* more options to verify OTR (SMP, QR Codes, NFC)
+* ability to create instant conferences
+* r/o dynamic tags (presence and roster groups)
+* optional foreground service (expert option)
+* added SCRAM-SHA1 login method
+* bug fixes
+
 ####Version 0.8.4
 * bug fixes
 

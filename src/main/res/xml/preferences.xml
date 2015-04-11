@@ -9,7 +9,7 @@
             android:title="@string/pref_grant_presence_updates" />
 
         <ListPreference
-            android:defaultValue="Mobile"
+            android:defaultValue="FrozenChat"
             android:entries="@array/resources"
             android:entryValues="@array/resources"
             android:key="resource"
@@ -28,6 +28,13 @@
             android:key="confirm_messages"
             android:summary="@string/pref_confirm_messages_summary"
             android:title="@string/pref_confirm_messages" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="chat_states"
+            android:summary="@string/pref_chat_states_summary"
+            android:title="@string/pref_chat_states" />
+
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/pref_notification_settings" >
         <CheckBoxPreference
@@ -35,7 +42,29 @@
             android:key="show_notification"
             android:summary="@string/pref_notifications_summary"
             android:title="@string/pref_notifications" />
-        <CheckBoxPreference
+          <PreferenceScreen
+            android:dependency="show_notification"
+            android:summary="@string/pref_quiet_hours_summary"
+            android:title="@string/title_pref_quiet_hours">
+            <CheckBoxPreference
+              android:defaultValue="false"
+              android:key="enable_quiet_hours"
+              android:summary="@string/pref_quiet_hours_summary"
+              android:title="@string/title_pref_enable_quiet_hours" />
+            <org.frozenbox.frozenchat.ui.TimePreference
+              android:dependency="enable_quiet_hours"
+              android:key="quiet_hours_start"
+              android:negativeButtonText="@string/cancel"
+              android:positiveButtonText="@string/set"
+              android:title="@string/title_pref_quiet_hours_start_time" />
+            <org.frozenbox.frozenchat.ui.TimePreference
+              android:dependency="enable_quiet_hours"
+              android:key="quiet_hours_end"
+              android:negativeButtonText="@string/cancel"
+              android:positiveButtonText="@string/set"
+              android:title="@string/title_pref_quiet_hours_end_time" />
+          </PreferenceScreen>
+          <CheckBoxPreference
             android:defaultValue="true"
             android:dependency="show_notification"
             android:key="vibrate_on_notification"
@@ -69,12 +98,12 @@
             android:summary="@string/pref_use_larger_font_summary"
             android:title="@string/pref_use_larger_font" />
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="send_button_status"
             android:summary="@string/pref_use_send_button_to_indicate_status_summary"
             android:title="@string/pref_use_send_button_to_indicate_status" />
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="show_dynamic_tags"
             android:summary="@string/pref_show_dynamic_tags_summary"
             android:title="@string/pref_show_dynamic_tags" />
@@ -94,15 +123,22 @@
                     android:key="dont_save_encrypted"
                     android:summary="@string/pref_dont_save_encrypted_summary"
                     android:title="@string/pref_dont_save_encrypted" />
-                <CheckBoxPreference
-                    android:defaultValue="false"
-                    android:key="enable_legacy_ssl"
-                    android:summary="@string/pref_enable_legacy_ssl_summary"
-                    android:title="@string/pref_enable_legacy_ssl" />
             </PreferenceCategory>
+	        <PreferenceCategory android:title="@string/pref_input_options">
+		        <CheckBoxPreference
+			        android:defaultValue="false"
+			        android:key="enter_is_send"
+			        android:title="@string/pref_enter_is_send"
+			        android:summary="@string/pref_enter_is_send_summary" />
+		        <CheckBoxPreference
+			        android:defaultValue="true"
+			        android:key="display_enter_key"
+			        android:title="@string/pref_display_enter_key"
+			        android:summary="@string/pref_display_enter_key_summary" />
+	        </PreferenceCategory>
             <PreferenceCategory android:title="@string/pref_expert_options_other" >
                 <CheckBoxPreference
-                    android:defaultValue="false"
+                    android:defaultValue="true"
                     android:key="indicate_received"
                     android:summary="@string/pref_use_indicate_received_summary"
                     android:title="@string/pref_use_indicate_received" />
@@ -123,5 +159,4 @@
 		<org.frozenbox.frozenchat.ui.AboutPreference
 			android:summary="@string/pref_about_conversations_summary"
 			android:title="@string/title_activity_about" />
-
 </PreferenceScreen>

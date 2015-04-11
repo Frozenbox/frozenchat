@@ -3,7 +3,7 @@
 
     <item
         android:id="@+id/action_edit_subject"
-        android:icon="@drawable/ic_action_edit"
+        android:icon="?attr/icon_edit"
         android:orderInCategory="10"
         android:showAsAction="always"
         android:title="@string/action_edit_subject"/>
@@ -11,6 +11,23 @@
         android:id="@+id/action_show_qr_code"
         android:title="@string/show_qr_code"
         android:showAsAction="never" />
+    <item
+        android:id="@+id/action_save_as_bookmark"
+        android:title="@string/save_as_bookmark"
+        android:orderInCategory="80"
+        android:showAsAction="never" />
+    <item
+        android:id="@+id/action_delete_bookmark"
+        android:title="@string/delete_bookmark"
+        android:orderInCategory="80"
+        android:showAsAction="never" />
+	<item
+		android:id="@+id/action_advanced_mode"
+		android:title="@string/advanced_mode"
+		android:checkable="true"
+		android:checked="false"
+		android:orderInCategory="85"
+		android:showAsAction="never" />
     <item
         android:id="@+id/action_accounts"
         android:orderInCategory="90"

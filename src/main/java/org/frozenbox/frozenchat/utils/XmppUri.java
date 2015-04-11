@@ -5,7 +5,6 @@ import android.net.Uri;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 
-import org.frozenbox.frozenchat.utils.CryptoHelper;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
@@ -19,7 +18,11 @@ public class XmppUri {
 		try {
 			parse(Uri.parse(uri));
 		} catch (IllegalArgumentException e) {
-			jid = null;
+			try {
+				jid = Jid.fromString(uri).toBareJid().toString();
+			} catch (InvalidJidException e2) {
+				jid = null;
+			}
 		}
 	}
 
@@ -29,7 +32,7 @@ public class XmppUri {
 
 	protected void parse(Uri uri) {
 		String scheme = uri.getScheme();
-		if ("xmpp".equals(scheme)) {
+		if ("xmpp".equalsIgnoreCase(scheme)) {
 			// sample: xmpp:jid@foo.com
 			muc = "join".equalsIgnoreCase(uri.getQuery());
 			if (uri.getAuthority() != null) {
@@ -38,11 +41,18 @@ public class XmppUri {
 				jid = uri.getSchemeSpecificPart().split("\\?")[0];
 			}
 			fingerprint = parseFingerprint(uri.getQuery());
-		} else if ("imto".equals(scheme)) {
+		} else if ("imto".equalsIgnoreCase(scheme)) {
 			// sample: imto://xmpp/jid@foo.com
 			try {
 				jid = URLDecoder.decode(uri.getEncodedPath(), "UTF-8").split("/")[1];
 			} catch (final UnsupportedEncodingException ignored) {
+				jid = null;
+			}
+		} else {
+			try {
+				jid = Jid.fromString(uri.toString()).toBareJid().toString();
+			} catch (final InvalidJidException ignored) {
+				jid = null;
 			}
 		}
 	}
@@ -54,7 +64,7 @@ public class XmppUri {
 			final String NEEDLE = "otr-fingerprint=";
 			int index = query.indexOf(NEEDLE);
 			if (index >= 0 && query.length() >= (NEEDLE.length() + index + 40)) {
-				return CryptoHelper.prettifyFingerprint(query.substring(index + NEEDLE.length(), index + NEEDLE.length() + 40));
+				return query.substring(index + NEEDLE.length(), index + NEEDLE.length() + 40);
 			} else {
 				return null;
 			}
@@ -63,7 +73,7 @@ public class XmppUri {
 
 	public Jid getJid() {
 		try {
-			return Jid.fromString(this.jid);
+			return this.jid == null ? null :Jid.fromString(this.jid.toLowerCase());
 		} catch (InvalidJidException e) {
 			return null;
 		}
@@ -71,9 +81,5 @@ public class XmppUri {
 
 	public String getFingerprint() {
 		return this.fingerprint;
-	}
-
-	public boolean isMuc() {
-		return this.muc;
 	}
 }

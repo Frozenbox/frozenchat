@@ -12,6 +12,7 @@ import org.frozenbox.frozenchat.entities.Conversation;
 import org.frozenbox.frozenchat.entities.Message;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.xml.Element;
+import org.frozenbox.frozenchat.xmpp.chatstate.ChatState;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 import org.frozenbox.frozenchat.xmpp.stanzas.MessagePacket;
 
@@ -34,6 +35,9 @@ public class MessageGenerator extends AbstractGenerator {
 		} else if (message.getType() == Message.TYPE_PRIVATE) {
 			packet.setTo(message.getCounterpart());
 			packet.setType(MessagePacket.TYPE_CHAT);
+			if (this.mXmppConnectionService.indicateReceived()) {
+				packet.addChild("request", "urn:xmpp:receipts");
+			}
 		} else {
 			packet.setTo(message.getCounterpart().toBareJid());
 			packet.setType(MessagePacket.TYPE_GROUPCHAT);
@@ -68,7 +72,7 @@ public class MessageGenerator extends AbstractGenerator {
 		packet.addChild("private", "urn:xmpp:carbons:2");
 		packet.addChild("no-copy", "urn:xmpp:hints");
 		try {
-			packet.setBody(otrSession.transformSending(message.getBody()));
+			packet.setBody(otrSession.transformSending(message.getBody())[0]);
 			return packet;
 		} catch (OtrException e) {
 			return null;
@@ -102,21 +106,12 @@ public class MessageGenerator extends AbstractGenerator {
 		return packet;
 	}
 
-	public MessagePacket generateNotAcceptable(MessagePacket origin) {
-		MessagePacket packet = generateError(origin);
-		Element error = packet.addChild("error");
-		error.setAttribute("type", "modify");
-		error.setAttribute("code", "406");
-		error.addChild("not-acceptable");
-		return packet;
-	}
-
-	private MessagePacket generateError(MessagePacket origin) {
+	public MessagePacket generateChatState(Conversation conversation) {
+		final Account account = conversation.getAccount();
 		MessagePacket packet = new MessagePacket();
-		packet.setId(origin.getId());
-        packet.setTo(origin.getFrom());
-		packet.setBody(origin.getBody());
-		packet.setType(MessagePacket.TYPE_ERROR);
+		packet.setTo(conversation.getJid().toBareJid());
+		packet.setFrom(account.getJid());
+		packet.addChild(ChatState.toElement(conversation.getOutgoingChatState()));
 		return packet;
 	}
 
@@ -135,7 +130,7 @@ public class MessageGenerator extends AbstractGenerator {
 			String subject) {
 		MessagePacket packet = new MessagePacket();
 		packet.setType(MessagePacket.TYPE_GROUPCHAT);
-		packet.setTo(conversation.getContactJid().toBareJid());
+		packet.setTo(conversation.getJid().toBareJid());
 		Element subjectChild = new Element("subject");
 		subjectChild.setContent(subject);
 		packet.addChild(subjectChild);
@@ -149,13 +144,13 @@ public class MessageGenerator extends AbstractGenerator {
 		packet.setTo(contact);
 		packet.setFrom(conversation.getAccount().getJid());
 		Element x = packet.addChild("x", "jabber:x:conference");
-		x.setAttribute("jid", conversation.getContactJid().toBareJid().toString());
+		x.setAttribute("jid", conversation.getJid().toBareJid().toString());
 		return packet;
 	}
 
 	public MessagePacket invite(Conversation conversation, Jid contact) {
 		MessagePacket packet = new MessagePacket();
-		packet.setTo(conversation.getContactJid().toBareJid());
+		packet.setTo(conversation.getJid().toBareJid());
 		packet.setFrom(conversation.getAccount().getJid());
 		Element x = new Element("x");
 		x.setAttribute("xmlns", "http://jabber.org/protocol/muc#user");
@@ -170,10 +165,23 @@ public class MessageGenerator extends AbstractGenerator {
 			MessagePacket originalMessage, String namespace) {
 		MessagePacket receivedPacket = new MessagePacket();
 		receivedPacket.setType(MessagePacket.TYPE_NORMAL);
-        receivedPacket.setTo(originalMessage.getFrom());
+		receivedPacket.setTo(originalMessage.getFrom());
 		receivedPacket.setFrom(account.getJid());
 		Element received = receivedPacket.addChild("received", namespace);
 		received.setAttribute("id", originalMessage.getId());
 		return receivedPacket;
+	}
+
+	public MessagePacket generateOtrError(Jid to, String id, String errorText) {
+		MessagePacket packet = new MessagePacket();
+		packet.setType(MessagePacket.TYPE_ERROR);
+		packet.setAttribute("id",id);
+		packet.setTo(to);
+		Element error = packet.addChild("error");
+		error.setAttribute("code","406");
+		error.setAttribute("type","modify");
+		error.addChild("not-acceptable","urn:ietf:params:xml:ns:xmpp-stanzas");
+		error.addChild("text").setContent("?OTR Error:" + errorText);
+		return packet;
 	}
 }

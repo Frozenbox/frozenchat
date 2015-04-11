@@ -20,6 +20,8 @@ import org.frozenbox.frozenchat.Config;
 import org.frozenbox.frozenchat.entities.Account;
 import org.frozenbox.frozenchat.entities.Conversation;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
+import org.frozenbox.frozenchat.utils.CryptoHelper;
+import org.frozenbox.frozenchat.xmpp.chatstate.ChatState;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 import org.frozenbox.frozenchat.xmpp.stanzas.MessagePacket;
@@ -32,8 +34,9 @@ import net.java.otr4j.crypto.OtrCryptoEngineImpl;
 import net.java.otr4j.crypto.OtrCryptoException;
 import net.java.otr4j.session.InstanceTag;
 import net.java.otr4j.session.SessionID;
+import net.java.otr4j.session.FragmenterInstructions;
 
-public class OtrEngine implements OtrEngineHost {
+public class OtrEngine extends OtrCryptoEngineImpl implements OtrEngineHost {
 
 	private Account account;
 	private OtrPolicy otrPolicy;
@@ -125,7 +128,7 @@ public class OtrEngine implements OtrEngineHost {
 	@Override
 	public byte[] getLocalFingerprintRaw(SessionID arg0) {
 		try {
-			return new OtrCryptoEngineImpl().getFingerprintRaw(getPublicKey());
+			return getFingerprintRaw(getPublicKey());
 		} catch (OtrCryptoException e) {
 			return null;
 		}
@@ -179,14 +182,27 @@ public class OtrEngine implements OtrEngineHost {
 		packet.setBody(body);
 		packet.addChild("private", "urn:xmpp:carbons:2");
 		packet.addChild("no-copy", "urn:xmpp:hints");
+		packet.addChild("no-store", "urn:xmpp:hints");
+
+		try {
+			Jid jid = Jid.fromSessionID(session);
+			Conversation conversation = mXmppConnectionService.find(account,jid);
+			if (conversation != null && conversation.setOutgoingChatState(Config.DEFAULT_CHATSTATE)) {
+				if (mXmppConnectionService.sendChatStates()) {
+					packet.addChild(ChatState.toElement(conversation.getOutgoingChatState()));
+				}
+			}
+		} catch (final InvalidJidException ignored) {
+
+		}
+
 		packet.setType(MessagePacket.TYPE_CHAT);
 		account.getXmppConnection().sendMessagePacket(packet);
 	}
 
 	@Override
-	public void messageFromAnotherInstanceReceived(SessionID id) {
-		Log.d(Config.LOGTAG,
-				"unreadable message received from " + id.getAccountID());
+	public void messageFromAnotherInstanceReceived(SessionID session) {
+		sendOtrErrorMessage(session, "Message from another OTR-instance received");
 	}
 
 	@Override
@@ -238,9 +254,28 @@ public class OtrEngine implements OtrEngineHost {
 	}
 
 	@Override
-	public void unreadableMessageReceived(SessionID arg0) throws OtrException {
+	public void unreadableMessageReceived(SessionID session) throws OtrException {
 		Log.d(Config.LOGTAG,"unreadable message received");
-		throw new OtrException(new Exception("unreadable message received"));
+		sendOtrErrorMessage(session, "You sent me an unreadable OTR-encrypted message");
+	}
+
+	public void sendOtrErrorMessage(SessionID session, String errorText) {
+		try {
+			Jid jid = Jid.fromSessionID(session);
+			Conversation conversation = mXmppConnectionService.find(account, jid);
+			String id = conversation == null ? null : conversation.getLastReceivedOtrMessageId();
+			if (id != null) {
+				MessagePacket packet = mXmppConnectionService.getMessageGenerator()
+						.generateOtrError(jid, id, errorText);
+				packet.setFrom(account.getJid());
+				mXmppConnectionService.sendMessagePacket(account,packet);
+				Log.d(Config.LOGTAG,packet.toString());
+				Log.d(Config.LOGTAG,account.getJid().toBareJid().toString()
+						+": unreadable OTR message in "+conversation.getName());
+			}
+		} catch (InvalidJidException e) {
+			return;
+		}
 	}
 
 	@Override
@@ -249,19 +284,27 @@ public class OtrEngine implements OtrEngineHost {
 	}
 
 	@Override
-	public void verify(SessionID id, String arg1, boolean arg2) {
+	public void verify(SessionID id, String fingerprint, boolean approved) {
+		Log.d(Config.LOGTAG,"OtrEngine.verify("+id.toString()+","+fingerprint+","+String.valueOf(approved)+")");
 		try {
 			final Jid jid = Jid.fromSessionID(id);
 			Conversation conversation = this.mXmppConnectionService.find(this.account,jid);
 			if (conversation!=null) {
+				if (approved) {
+					conversation.getContact().addOtrFingerprint(fingerprint);
+				}
 				conversation.smp().hint = null;
 				conversation.smp().status = Conversation.Smp.STATUS_VERIFIED;
-				conversation.verifyOtrFingerprint();
 				mXmppConnectionService.updateConversationUi();
 				mXmppConnectionService.syncRosterToDisk(conversation.getAccount());
 			}
 		} catch (final InvalidJidException ignored) {
 		}
+	}
+
+	@Override
+	public FragmenterInstructions getFragmenterInstructions(SessionID sessionID) {
+		return null;
 	}
 
 }
