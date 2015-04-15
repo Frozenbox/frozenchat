@@ -3,6 +3,7 @@
 
     <color name="primary" type="color">#ff0084FF</color>
     <color name="primarydark" type="color">#ff0D7FB9</color>
+    <color name="accent" type="color">#ffffe62d</color>
     <color name="primarytext" type="color">#de000000</color>
     <color name="secondarytext" type="color">#8a000000</color>
     <color name="ondarktext" type="color">#ffcacaca</color>
