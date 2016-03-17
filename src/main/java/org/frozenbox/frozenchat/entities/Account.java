@@ -3,7 +3,9 @@ package org.frozenbox.frozenchat.entities;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.os.SystemClock;
+import android.util.Pair;
 
+import org.frozenbox.frozenchat.crypto.PgpDecryptionService;
 import net.java.otr4j.crypto.OtrCryptoEngineImpl;
 import net.java.otr4j.crypto.OtrCryptoException;
 
@@ -13,13 +15,15 @@ import org.json.JSONObject;
 import java.security.PublicKey;
 import java.security.interfaces.DSAPublicKey;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.frozenbox.frozenchat.Config;
 import org.frozenbox.frozenchat.R;
-import org.frozenbox.frozenchat.crypto.OtrEngine;
+import org.frozenbox.frozenchat.crypto.OtrService;
+import org.frozenbox.frozenchat.crypto.axolotl.AxolotlService;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.xmpp.XmppConnection;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
@@ -36,6 +40,9 @@ public class Account extends AbstractEntity {
 	public static final String ROSTERVERSION = "rosterversion";
 	public static final String KEYS = "keys";
 	public static final String AVATAR = "avatar";
+	public static final String DISPLAY_NAME = "display_name";
+	public static final String HOSTNAME = "hostname";
+	public static final String PORT = "port";
 
 	public static final String PINNED_MECHANISM_KEY = "pinned_mechanism";
 
@@ -43,8 +50,29 @@ public class Account extends AbstractEntity {
 	public static final int OPTION_DISABLED = 1;
 	public static final int OPTION_REGISTER = 2;
 	public static final int OPTION_USECOMPRESSION = 3;
+	public final HashSet<Pair<String, String>> inProgressDiscoFetches = new HashSet<>();
 
-	public static enum State {
+	public boolean httpUploadAvailable() {
+		return xmppConnection != null && xmppConnection.getFeatures().httpUpload();
+	}
+
+	public void setDisplayName(String displayName) {
+		this.displayName = displayName;
+	}
+
+	public String getDisplayName() {
+		return displayName;
+	}
+
+	public XmppConnection.Identity getServerIdentity() {
+		if (xmppConnection == null) {
+			return XmppConnection.Identity.UNKNOWN;
+		} else {
+			return xmppConnection.getServerIdentity();
+		}
+	}
+
+	public enum State {
 		DISABLED,
 		OFFLINE,
 		CONNECTING,
@@ -57,7 +85,8 @@ public class Account extends AbstractEntity {
 		REGISTRATION_SUCCESSFUL,
 		REGISTRATION_NOT_SUPPORTED(true),
 		SECURITY_ERROR(true),
-		INCOMPATIBLE_SERVER(true);
+		INCOMPATIBLE_SERVER(true),
+		TOR_NOT_AVAILABLE(true);
 
 		private final boolean isError;
 
@@ -101,6 +130,8 @@ public class Account extends AbstractEntity {
 					return R.string.account_status_security_error;
 				case INCOMPATIBLE_SERVER:
 					return R.string.account_status_incompatible_server;
+				case TOR_NOT_AVAILABLE:
+					return R.string.account_status_tor_unavailable;
 				default:
 					return R.string.account_status_unknown;
 			}
@@ -109,6 +140,10 @@ public class Account extends AbstractEntity {
 
 	public List<Conversation> pendingConferenceJoins = new CopyOnWriteArrayList<>();
 	public List<Conversation> pendingConferenceLeaves = new CopyOnWriteArrayList<>();
+
+	private static final String KEY_PGP_SIGNATURE = "pgp_signature";
+	private static final String KEY_PGP_ID = "pgp_id";
+
 	protected Jid jid;
 	protected String password;
 	protected int options = 0;
@@ -116,8 +151,13 @@ public class Account extends AbstractEntity {
 	protected State status = State.OFFLINE;
 	protected JSONObject keys = new JSONObject();
 	protected String avatar;
+	protected String displayName = null;
+	protected String hostname = null;
+	protected int port = 5222;
 	protected boolean online = false;
-	private OtrEngine otrEngine = null;
+	private OtrService mOtrService = null;
+	private AxolotlService axolotlService = null;
+	private PgpDecryptionService pgpDecryptionService = null;
 	private XmppConnection xmppConnection = null;
 	private long mEndGracePeriod = 0L;
 	private String otrFingerprint;
@@ -125,18 +165,14 @@ public class Account extends AbstractEntity {
 	private List<Bookmark> bookmarks = new CopyOnWriteArrayList<>();
 	private final Collection<Jid> blocklist = new CopyOnWriteArraySet<>();
 
-	public Account() {
-		this.uuid = "0";
-	}
-
 	public Account(final Jid jid, final String password) {
 		this(java.util.UUID.randomUUID().toString(), jid,
-				password, 0, null, "", null);
+				password, 0, null, "", null, null, null, 5222);
 	}
 
-	public Account(final String uuid, final Jid jid,
+	private Account(final String uuid, final Jid jid,
 			final String password, final int options, final String rosterVersion, final String keys,
-			final String avatar) {
+			final String avatar, String displayName, String hostname, int port) {
 		this.uuid = uuid;
 		this.jid = jid;
 		if (jid.isBareJid()) {
@@ -151,6 +187,9 @@ public class Account extends AbstractEntity {
 			this.keys = new JSONObject();
 		}
 		this.avatar = avatar;
+		this.displayName = displayName;
+		this.hostname = hostname;
+		this.port = port;
 	}
 
 	public static Account fromCursor(final Cursor cursor) {
@@ -166,7 +205,10 @@ public class Account extends AbstractEntity {
 				cursor.getInt(cursor.getColumnIndex(OPTIONS)),
 				cursor.getString(cursor.getColumnIndex(ROSTERVERSION)),
 				cursor.getString(cursor.getColumnIndex(KEYS)),
-				cursor.getString(cursor.getColumnIndex(AVATAR)));
+				cursor.getString(cursor.getColumnIndex(AVATAR)),
+				cursor.getString(cursor.getColumnIndex(DISPLAY_NAME)),
+				cursor.getString(cursor.getColumnIndex(HOSTNAME)),
+				cursor.getInt(cursor.getColumnIndex(PORT)));
 	}
 
 	public boolean isOptionSet(final int option) {
@@ -185,16 +227,12 @@ public class Account extends AbstractEntity {
 		return jid.getLocalpart();
 	}
 
-	public void setUsername(final String username) throws InvalidJidException {
-		jid = Jid.fromParts(username, jid.getDomainpart(), jid.getResourcepart());
+	public void setJid(final Jid jid) {
+		this.jid = jid;
 	}
 
 	public Jid getServer() {
 		return jid.toDomainJid();
-	}
-
-	public void setServer(final String server) throws InvalidJidException {
-		jid = Jid.fromParts(jid.getLocalpart(), server, jid.getResourcepart());
 	}
 
 	public String getPassword() {
@@ -203,6 +241,26 @@ public class Account extends AbstractEntity {
 
 	public void setPassword(final String password) {
 		this.password = password;
+	}
+
+	public void setHostname(String hostname) {
+		this.hostname = hostname;
+	}
+
+	public String getHostname() {
+		return this.hostname == null ? "" : this.hostname;
+	}
+
+	public boolean isOnion() {
+		return getServer().toString().toLowerCase().endsWith(".onion");
+	}
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	public int getPort() {
+		return this.port;
 	}
 
 	public State getStatus() {
@@ -222,7 +280,7 @@ public class Account extends AbstractEntity {
 	}
 
 	public boolean hasErrorStatus() {
-		return getXmppConnection() != null && getStatus().isError() && getXmppConnection().getAttempt() >= 2;
+		return getXmppConnection() != null && getStatus().isError() && getXmppConnection().getAttempt() >= 3;
 	}
 
 	public String getResource() {
@@ -250,6 +308,10 @@ public class Account extends AbstractEntity {
 		return keys;
 	}
 
+	public String getKey(final String name) {
+		return this.keys.optString(name, null);
+	}
+
 	public boolean setKey(final String keyName, final String keyValue) {
 		try {
 			this.keys.put(keyName, keyValue);
@@ -257,6 +319,14 @@ public class Account extends AbstractEntity {
 		} catch (final JSONException e) {
 			return false;
 		}
+	}
+
+	public boolean setPrivateKeyAlias(String alias) {
+		return setKey("private_key_alias", alias);
+	}
+
+	public String getPrivateKeyAlias() {
+		return getKey("private_key_alias");
 	}
 
 	@Override
@@ -270,15 +340,31 @@ public class Account extends AbstractEntity {
 		values.put(KEYS, this.keys.toString());
 		values.put(ROSTERVERSION, rosterVersion);
 		values.put(AVATAR, avatar);
+		values.put(DISPLAY_NAME, displayName);
+		values.put(HOSTNAME, hostname);
+		values.put(PORT, port);
 		return values;
 	}
 
-	public void initOtrEngine(final XmppConnectionService context) {
-		this.otrEngine = new OtrEngine(context, this);
+	public AxolotlService getAxolotlService() {
+		return axolotlService;
 	}
 
-	public OtrEngine getOtrEngine() {
-		return this.otrEngine;
+	public void initAccountServices(final XmppConnectionService context) {
+		this.mOtrService = new OtrService(context, this);
+		this.axolotlService = new AxolotlService(this, context);
+		if (xmppConnection != null) {
+			xmppConnection.addOnAdvancedStreamFeaturesAvailableListener(axolotlService);
+		}
+		this.pgpDecryptionService = new PgpDecryptionService(context);
+	}
+
+	public OtrService getOtrService() {
+		return this.mOtrService;
+	}
+
+	public PgpDecryptionService getPgpDecryptionService() {
+		return pgpDecryptionService;
 	}
 
 	public XmppConnection getXmppConnection() {
@@ -292,10 +378,10 @@ public class Account extends AbstractEntity {
 	public String getOtrFingerprint() {
 		if (this.otrFingerprint == null) {
 			try {
-				if (this.otrEngine == null) {
+				if (this.mOtrService == null) {
 					return null;
 				}
-				final PublicKey publicKey = this.otrEngine.getPublicKey();
+				final PublicKey publicKey = this.mOtrService.getPublicKey();
 				if (publicKey == null || !(publicKey instanceof DSAPublicKey)) {
 					return null;
 				}
@@ -326,15 +412,54 @@ public class Account extends AbstractEntity {
 	}
 
 	public String getPgpSignature() {
-		if (keys.has("pgp_signature")) {
-			try {
-				return keys.getString("pgp_signature");
-			} catch (final JSONException e) {
+		try {
+			if (keys.has(KEY_PGP_SIGNATURE) && !"null".equals(keys.getString(KEY_PGP_SIGNATURE))) {
+				return keys.getString(KEY_PGP_SIGNATURE);
+			} else {
 				return null;
 			}
-		} else {
+		} catch (final JSONException e) {
 			return null;
 		}
+	}
+
+	public boolean setPgpSignature(String signature) {
+		try {
+			keys.put(KEY_PGP_SIGNATURE, signature);
+		} catch (JSONException e) {
+			return false;
+		}
+		return true;
+	}
+
+	public boolean unsetPgpSignature() {
+		try {
+			keys.put(KEY_PGP_SIGNATURE, JSONObject.NULL);
+		} catch (JSONException e) {
+			return false;
+		}
+		return true;
+	}
+
+	public long getPgpId() {
+		if (keys.has(KEY_PGP_ID)) {
+			try {
+				return keys.getLong(KEY_PGP_ID);
+			} catch (JSONException e) {
+				return -1;
+			}
+		} else {
+			return -1;
+		}
+	}
+
+	public boolean setPgpSignId(long pgpID) {
+		try {
+			keys.put(KEY_PGP_ID, pgpID);
+		} catch (JSONException e) {
+			return false;
+		}
+		return true;
 	}
 
 	public Roster getRoster() {

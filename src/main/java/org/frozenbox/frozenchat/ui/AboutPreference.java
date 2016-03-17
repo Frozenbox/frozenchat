@@ -2,7 +2,6 @@ package org.frozenbox.frozenchat.ui;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.preference.Preference;
 import android.util.AttributeSet;
 
@@ -27,7 +26,6 @@ public class AboutPreference extends Preference {
     }
 
     private void setSummary() {
-		setSummary("Conversations " + PhoneHelper.getVersionName(getContext()));
+		setSummary("FrozenChat " + PhoneHelper.getVersionName(getContext()));
 	}
 }
-

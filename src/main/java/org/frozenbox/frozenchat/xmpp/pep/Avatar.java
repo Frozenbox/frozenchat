@@ -1,11 +1,14 @@
 package org.frozenbox.frozenchat.xmpp.pep;
 
+import android.util.Base64;
+
 import org.frozenbox.frozenchat.xml.Element;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
-import android.util.Base64;
-
 public class Avatar {
+
+	public enum Origin { PEP, VCARD };
+
 	public String type;
 	public String sha1sum;
 	public String image;
@@ -13,21 +16,14 @@ public class Avatar {
 	public int width;
 	public long size;
 	public Jid owner;
+	public Origin origin = Origin.PEP; //default to maintain compat
 
 	public byte[] getImageAsBytes() {
 		return Base64.decode(image, Base64.DEFAULT);
 	}
 
 	public String getFilename() {
-		if (type == null) {
-			return sha1sum;
-		} else if (type.equalsIgnoreCase("image/webp")) {
-			return sha1sum + ".webp";
-		} else if (type.equalsIgnoreCase("image/png")) {
-			return sha1sum + ".png";
-		} else {
-			return sha1sum;
-		}
+		return sha1sum;
 	}
 
 	public static Avatar parseMetadata(Element items) {
@@ -64,10 +60,43 @@ public class Avatar {
 					return null;
 				}
 				avatar.type = child.getAttribute("type");
-				avatar.sha1sum = child.getAttribute("id");
+				String hash = child.getAttribute("id");
+				if (!isValidSHA1(hash)) {
+					return null;
+				}
+				avatar.sha1sum = hash;
+				avatar.origin = Origin.PEP;
 				return avatar;
 			}
 		}
 		return null;
+	}
+
+	@Override
+	public boolean equals(Object object) {
+		if (object != null && object instanceof Avatar) {
+			Avatar other = (Avatar) object;
+			return other.getFilename().equals(this.getFilename());
+		} else {
+			return false;
+		}
+	}
+
+	public static Avatar parsePresence(Element x) {
+		String hash = x == null ? null : x.findChildContent("photo");
+		if (hash == null) {
+			return null;
+		}
+		if (!isValidSHA1(hash)) {
+			return null;
+		}
+		Avatar avatar = new Avatar();
+		avatar.sha1sum = hash;
+		avatar.origin = Origin.VCARD;
+		return avatar;
+	}
+
+	private static boolean isValidSHA1(String s) {
+		return s != null && s.matches("[a-fA-F0-9]{40}");
 	}
 }

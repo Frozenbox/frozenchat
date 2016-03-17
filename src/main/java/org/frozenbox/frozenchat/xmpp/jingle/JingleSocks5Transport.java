@@ -1,17 +1,27 @@
 package org.frozenbox.frozenchat.xmpp.jingle;
 
+import android.os.PowerManager;
+import android.util.Log;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
+import org.frozenbox.frozenchat.Config;
 import org.frozenbox.frozenchat.entities.DownloadableFile;
+import org.frozenbox.frozenchat.persistance.FileBackend;
 import org.frozenbox.frozenchat.utils.CryptoHelper;
+import org.frozenbox.frozenchat.utils.SocksSocketFactory;
 
 public class JingleSocks5Transport extends JingleTransport {
 	private JingleCandidate candidate;
@@ -52,33 +62,19 @@ public class JingleSocks5Transport extends JingleTransport {
 			@Override
 			public void run() {
 				try {
-					socket = new Socket(candidate.getHost(),
-							candidate.getPort());
+					final boolean useTor = connection.getAccount().isOnion() || connection.getConnectionManager().getXmppConnectionService().useTorToConnect();
+					if (useTor) {
+						socket = SocksSocketFactory.createSocketOverTor(candidate.getHost(),candidate.getPort());
+					} else {
+						socket = new Socket();
+						SocketAddress address = new InetSocketAddress(candidate.getHost(),candidate.getPort());
+						socket.connect(address,Config.SOCKET_TIMEOUT * 1000);
+					}
 					inputStream = socket.getInputStream();
 					outputStream = socket.getOutputStream();
-					byte[] login = { 0x05, 0x01, 0x00 };
-					byte[] expectedReply = { 0x05, 0x00 };
-					byte[] reply = new byte[2];
-					outputStream.write(login);
-					inputStream.read(reply);
-					final String connect = Character.toString('\u0005')
-							+ '\u0001' + '\u0000' + '\u0003' + '\u0028'
-							+ destination + '\u0000' + '\u0000';
-					if (Arrays.equals(reply, expectedReply)) {
-						outputStream.write(connect.getBytes());
-						byte[] result = new byte[2];
-						inputStream.read(result);
-						int status = result[1];
-						if (status == 0) {
-							isEstablished = true;
-							callback.established();
-						} else {
-							callback.failed();
-						}
-					} else {
-						socket.close();
-						callback.failed();
-					}
+					SocksSocketFactory.createSocksConnection(socket,destination,0);
+					isEstablished = true;
+					callback.established();
 				} catch (UnknownHostException e) {
 					callback.failed();
 				} catch (IOException e) {
@@ -89,22 +85,24 @@ public class JingleSocks5Transport extends JingleTransport {
 
 	}
 
-	public void send(final DownloadableFile file,
-			final OnFileTransmissionStatusChanged callback) {
+	public void send(final DownloadableFile file, final OnFileTransmissionStatusChanged callback) {
 		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
 				InputStream fileInputStream = null;
+				final PowerManager.WakeLock wakeLock = connection.getConnectionManager().createWakeLock("jingle_send_"+connection.getSessionId());
 				try {
+					wakeLock.acquire();
 					MessageDigest digest = MessageDigest.getInstance("SHA-1");
 					digest.reset();
-					fileInputStream = file.createInputStream();
+					fileInputStream = connection.getFileInputStream();
 					if (fileInputStream == null) {
+						Log.d(Config.LOGTAG, connection.getAccount().getJid().toBareJid() + ": could not create input stream");
 						callback.onFileTransferAborted();
 						return;
 					}
-					long size = file.getSize();
+					long size = file.getExpectedSize();
 					long transmitted = 0;
 					int count;
 					byte[] buffer = new byte[8192];
@@ -120,51 +118,53 @@ public class JingleSocks5Transport extends JingleTransport {
 						callback.onFileTransmitted(file);
 					}
 				} catch (FileNotFoundException e) {
+					Log.d(Config.LOGTAG, connection.getAccount().getJid().toBareJid() + ": "+e.getMessage());
 					callback.onFileTransferAborted();
 				} catch (IOException e) {
+					Log.d(Config.LOGTAG, connection.getAccount().getJid().toBareJid() + ": "+e.getMessage());
 					callback.onFileTransferAborted();
 				} catch (NoSuchAlgorithmException e) {
+					Log.d(Config.LOGTAG, connection.getAccount().getJid().toBareJid() + ": "+e.getMessage());
 					callback.onFileTransferAborted();
 				} finally {
-					try {
-						if (fileInputStream != null) {
-							fileInputStream.close();
-						}
-					} catch (IOException e) {
-						callback.onFileTransferAborted();
-					}
+					FileBackend.close(fileInputStream);
+					wakeLock.release();
 				}
 			}
 		}).start();
 
 	}
 
-	public void receive(final DownloadableFile file,
-			final OnFileTransmissionStatusChanged callback) {
+	public void receive(final DownloadableFile file, final OnFileTransmissionStatusChanged callback) {
 		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
+				OutputStream fileOutputStream = null;
+				final PowerManager.WakeLock wakeLock = connection.getConnectionManager().createWakeLock("jingle_receive_"+connection.getSessionId());
 				try {
+					wakeLock.acquire();
 					MessageDigest digest = MessageDigest.getInstance("SHA-1");
 					digest.reset();
-					inputStream.skip(45);
+					//inputStream.skip(45);
 					socket.setSoTimeout(30000);
 					file.getParentFile().mkdirs();
 					file.createNewFile();
-					OutputStream fileOutputStream = file.createOutputStream();
+					fileOutputStream = connection.getFileOutputStream();
 					if (fileOutputStream == null) {
 						callback.onFileTransferAborted();
+						Log.d(Config.LOGTAG, connection.getAccount().getJid().toBareJid() + ": could not create output stream");
 						return;
 					}
 					double size = file.getExpectedSize();
 					long remainingSize = file.getExpectedSize();
 					byte[] buffer = new byte[8192];
-					int count = buffer.length;
+					int count;
 					while (remainingSize > 0) {
 						count = inputStream.read(buffer);
 						if (count == -1) {
 							callback.onFileTransferAborted();
+							Log.d(Config.LOGTAG, connection.getAccount().getJid().toBareJid() + ": file ended prematurely with "+remainingSize+" bytes remaining");
 							return;
 						} else {
 							fileOutputStream.write(buffer, 0, count);
@@ -178,11 +178,18 @@ public class JingleSocks5Transport extends JingleTransport {
 					file.setSha1Sum(CryptoHelper.bytesToHex(digest.digest()));
 					callback.onFileTransmitted(file);
 				} catch (FileNotFoundException e) {
+					Log.d(Config.LOGTAG, connection.getAccount().getJid().toBareJid() + ": "+e.getMessage());
 					callback.onFileTransferAborted();
 				} catch (IOException e) {
+					Log.d(Config.LOGTAG, connection.getAccount().getJid().toBareJid() + ": "+e.getMessage());
 					callback.onFileTransferAborted();
 				} catch (NoSuchAlgorithmException e) {
+					Log.d(Config.LOGTAG, connection.getAccount().getJid().toBareJid() + ": "+e.getMessage());
 					callback.onFileTransferAborted();
+				} finally {
+					wakeLock.release();
+					FileBackend.close(fileOutputStream);
+					FileBackend.close(inputStream);
 				}
 			}
 		}).start();
@@ -197,27 +204,9 @@ public class JingleSocks5Transport extends JingleTransport {
 	}
 
 	public void disconnect() {
-		if (this.outputStream != null) {
-			try {
-				this.outputStream.close();
-			} catch (IOException e) {
-
-			}
-		}
-		if (this.inputStream != null) {
-			try {
-				this.inputStream.close();
-			} catch (IOException e) {
-
-			}
-		}
-		if (this.socket != null) {
-			try {
-				this.socket.close();
-			} catch (IOException e) {
-
-			}
-		}
+		FileBackend.close(inputStream);
+		FileBackend.close(outputStream);
+		FileBackend.close(socket);
 	}
 
 	public boolean isEstablished() {

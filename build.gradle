@@ -6,7 +6,7 @@ buildscript {
 		mavenCentral()
 	}
 	dependencies {
-		classpath 'com.android.tools.build:gradle:1.0.1'
+		classpath 'com.android.tools.build:gradle:1.5.0'
 	}
 }
 
@@ -14,6 +14,9 @@ allprojects {
 	repositories {
 		jcenter()
 		mavenCentral()
+		maven {
+			url 'http://lorenzo.villani.me/android-cropimage/'
+		}
 	}
 }
 
@@ -24,28 +27,41 @@ repositories {
 	mavenCentral()
 }
 
+configurations {
+	playstoreCompile
+}
+
 dependencies {
-	compile project(':libs:openpgp-api-lib')
 	compile project(':libs:MemorizingTrustManager')
-	compile 'com.android.support:support-v13:21.0.3'
-	compile 'org.bouncycastle:bcprov-jdk15on:1.51'
+	compile 'org.sufficientlysecure:openpgp-api:10.0'
+	compile 'com.soundcloud.android:android-crop:1.0.1@aar'
+	compile 'com.android.support:support-v13:23.1.1'
+	compile 'org.bouncycastle:bcprov-jdk15on:1.52'
+	compile 'org.bouncycastle:bcmail-jdk15on:1.52'
 	compile 'org.jitsi:org.otr4j:0.22'
 	compile 'org.gnu.inet:libidn:1.15'
-	compile 'com.google.zxing:core:3.1.0'
-	compile 'com.google.zxing:android-integration:3.1.0'
-	compile 'de.measite.minidns:minidns:0.1.3'
+	compile 'com.google.zxing:core:3.2.1'
+	compile 'com.google.zxing:android-integration:3.2.1'
+	compile 'de.measite.minidns:minidns:0.1.7'
 	compile 'de.timroes.android:EnhancedListView:0.3.4'
+	compile 'me.leolin:ShortcutBadger:1.1.3@aar'
+	compile 'com.kyleduo.switchbutton:library:1.2.8'
+	compile 'org.whispersystems:axolotl-android:1.3.4'
+	compile 'com.makeramen:roundedimageview:2.2.0'
+	playstoreCompile 'com.google.android.gms:play-services-gcm:8.3.0'
 }
 
 android {
-	compileSdkVersion 21
-	buildToolsVersion "21.1.2"
+	compileSdkVersion 23
+	buildToolsVersion "23.0.2"
 
 	defaultConfig {
 		minSdkVersion 14
-		targetSdkVersion 21
-		versionCode 05
-		versionName "0.5"
+		targetSdkVersion 23
+		versionCode 133
+		versionName "1.11.1"
+		archivesBaseName += "-$versionName"
+		applicationId "org.frozenbox.frozenchat"
 	}
 
 	compileOptions {
@@ -53,15 +69,10 @@ android {
 		targetCompatibility JavaVersion.VERSION_1_7
 	}
 
-	//
-	// To sign release builds, create the file `gradle.properties` in
-	// $HOME/.gradle or in your project directory with this content:
-	//
-	// mStoreFile=/path/to/key.store
-	// mStorePassword=xxx
-	// mKeyAlias=alias
-	// mKeyPassword=xxx
-	//
+   productFlavors {
+		playstore
+		free
+	}
 	if (project.hasProperty('mStoreFile') &&
 			project.hasProperty('mStorePassword') &&
 			project.hasProperty('mKeyAlias') &&
@@ -79,21 +90,8 @@ android {
 		buildTypes.release.signingConfig = null
 	}
 
-	applicationVariants.all { variant ->
-		if (variant.name.equals('release')) {
-			variant.outputs.each { output ->
-				if (output.zipAlign != null) {
-					output.zipAlign.outputFile = new File(output.outputFile.parent, rootProject.name + "-${variant.versionName}.apk")
-				}
-				output.packageApplication.outputFile = new File(output.outputFile.parent, output.packageApplication.outputFile.name
-					.replace(".apk", "-${variant.versionName}.apk"))
-			}
-		}
-	}
-
 	lintOptions {
-		disable 'ExtraTranslation', 'MissingTranslation', 'InvalidPackage'
-		abortOnError false
+		disable 'ExtraTranslation', 'MissingTranslation', 'InvalidPackage', 'MissingQuantity', 'AppCompatResource'
 	}
 
 	subprojects {
@@ -108,5 +106,10 @@ android {
 			}
 
 		}
+	}
+
+	packagingOptions {
+		exclude 'META-INF/BCKEY.DSA'
+		exclude 'META-INF/BCKEY.SF'
 	}
 }

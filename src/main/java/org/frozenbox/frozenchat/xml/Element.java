@@ -12,13 +12,18 @@ import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
 public class Element {
-	protected String name;
-	protected Hashtable<String, String> attributes = new Hashtable<>();
-	protected String content;
+	private final String name;
+	private Hashtable<String, String> attributes = new Hashtable<>();
+	private String content;
 	protected List<Element> children = new ArrayList<>();
 
 	public Element(String name) {
 		this.name = name;
+	}
+
+	public Element(String name, String xmlns) {
+		this.name = name;
+		this.setAttribute("xmlns", xmlns);
 	}
 
 	public Element addChild(Element child) {
@@ -57,14 +62,23 @@ public class Element {
 		return null;
 	}
 
+	public String findChildContent(String name) {
+		Element element = findChild(name);
+		return element == null ? null : element.getContent();
+	}
+
 	public Element findChild(String name, String xmlns) {
 		for (Element child : this.children) {
-			if (child.getName().equals(name)
-					&& (child.getAttribute("xmlns").equals(xmlns))) {
+			if (name.equals(child.getName()) && xmlns.equals(child.getAttribute("xmlns"))) {
 				return child;
-					}
+			}
 		}
 		return null;
+	}
+
+	public String findChildContent(String name, String xmlns) {
+		Element element = findChild(name,xmlns);
+		return element == null ? null : element.getContent();
 	}
 
 	public boolean hasChild(final String name) {
@@ -84,7 +98,7 @@ public class Element {
 		return this;
 	}
 
-	public String getContent() {
+	public final String getContent() {
 		return content;
 	}
 
@@ -148,7 +162,7 @@ public class Element {
 		return elementOutput.toString();
 	}
 
-	public String getName() {
+	public final String getName() {
 		return name;
 	}
 
@@ -167,5 +181,9 @@ public class Element {
 	public boolean getAttributeAsBoolean(String name) {
 		String attr = getAttribute(name);
 		return (attr != null && (attr.equalsIgnoreCase("true") || attr.equalsIgnoreCase("1")));
+	}
+
+	public String getNamespace() {
+		return getAttribute("xmlns");
 	}
 }

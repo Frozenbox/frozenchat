@@ -1,22 +1,51 @@
 package org.frozenbox.frozenchat.utils;
 
-import java.net.URLConnection;
-import java.util.Calendar;
-import java.util.Date;
-
-import org.frozenbox.frozenchat.R;
-import org.frozenbox.frozenchat.entities.Contact;
-import org.frozenbox.frozenchat.entities.Conversation;
-import org.frozenbox.frozenchat.entities.Downloadable;
-import org.frozenbox.frozenchat.entities.Message;
-import org.frozenbox.frozenchat.xmpp.jid.Jid;
-
 import android.content.Context;
 import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.util.Pair;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
+
+import org.frozenbox.frozenchat.R;
+import org.frozenbox.frozenchat.entities.Contact;
+import org.frozenbox.frozenchat.entities.Conversation;
+import org.frozenbox.frozenchat.entities.Message;
+import org.frozenbox.frozenchat.entities.Transferable;
+import org.frozenbox.frozenchat.xmpp.jid.Jid;
+
 public class UIHelper {
+
+	private static String BLACK_HEART_SUIT = "\u2665";
+	private static String HEAVY_BLACK_HEART_SUIT = "\u2764";
+	private static String WHITE_HEART_SUIT = "\u2661";
+
+	public static final ArrayList<String> HEARTS = new ArrayList<>(Arrays.asList(BLACK_HEART_SUIT,HEAVY_BLACK_HEART_SUIT,WHITE_HEART_SUIT));
+
+	private static final ArrayList<String> LOCATION_QUESTIONS = new ArrayList<>(Arrays.asList(
+			"where are you", //en
+			"where are you now", //en
+			"where are you right now", //en
+			"whats your 20", //en
+			"what is your 20", //en
+			"what's your 20", //en
+			"whats your twenty", //en
+			"what is your twenty", //en
+			"what's your twenty", //en
+			"wo bist du", //de
+			"wo bist du jetzt", //de
+			"wo bist du gerade", //de
+			"wo seid ihr", //de
+			"wo seid ihr jetzt", //de
+			"wo seid ihr gerade", //de
+			"dónde estás", //es
+			"donde estas" //es
+		));
+
 	private static final int SHORT_DATE_FLAGS = DateUtils.FORMAT_SHOW_DATE
 		| DateUtils.FORMAT_NO_YEAR | DateUtils.FORMAT_ABBREV_ALL;
 	private static final int FULL_DATE_FLAGS = DateUtils.FORMAT_SHOW_TIME
@@ -102,7 +131,7 @@ public class UIHelper {
 	}
 
 	public static int getColorForName(String name) {
-		if (name.isEmpty()) {
+		if (name == null || name.isEmpty()) {
 			return 0xFF202020;
 		}
 		int colors[] = {0xFFe91e63, 0xFF9c27b0, 0xFF673ab7, 0xFF3f51b5,
@@ -112,24 +141,25 @@ public class UIHelper {
 	}
 
 	public static Pair<String,Boolean> getMessagePreview(final Context context, final Message message) {
-		final Downloadable d = message.getDownloadable();
+		final Transferable d = message.getTransferable();
 		if (d != null ) {
 			switch (d.getStatus()) {
-				case Downloadable.STATUS_CHECKING:
-					return new Pair<>(context.getString(R.string.checking_image),true);
-				case Downloadable.STATUS_DOWNLOADING:
+				case Transferable.STATUS_CHECKING:
+					return new Pair<>(context.getString(R.string.checking_x,
+									getFileDescriptionString(context,message)),true);
+				case Transferable.STATUS_DOWNLOADING:
 					return new Pair<>(context.getString(R.string.receiving_x_file,
 									getFileDescriptionString(context,message),
 									d.getProgress()),true);
-				case Downloadable.STATUS_OFFER:
-				case Downloadable.STATUS_OFFER_CHECK_FILESIZE:
+				case Transferable.STATUS_OFFER:
+				case Transferable.STATUS_OFFER_CHECK_FILESIZE:
 					return new Pair<>(context.getString(R.string.x_file_offered_for_download,
 									getFileDescriptionString(context,message)),true);
-				case Downloadable.STATUS_DELETED:
+				case Transferable.STATUS_DELETED:
 					return new Pair<>(context.getString(R.string.file_deleted),true);
-				case Downloadable.STATUS_FAILED:
+				case Transferable.STATUS_FAILED:
 					return new Pair<>(context.getString(R.string.file_transmission_failed),true);
-				case Downloadable.STATUS_UPLOADING:
+				case Transferable.STATUS_UPLOADING:
 					if (message.getStatus() == Message.STATUS_OFFERED) {
 						return new Pair<>(context.getString(R.string.offering_x_file,
 								getFileDescriptionString(context, message)), true);
@@ -141,7 +171,9 @@ public class UIHelper {
 					return new Pair<>("",false);
 			}
 		} else if (message.getEncryption() == Message.ENCRYPTION_PGP) {
-			return new Pair<>(context.getString(R.string.encrypted_message_received),true);
+			return new Pair<>(context.getString(R.string.pgp_message),true);
+		} else if (message.getEncryption() == Message.ENCRYPTION_DECRYPTION_FAILED) {
+			return new Pair<>(context.getString(R.string.decryption_failed), true);
 		} else if (message.getType() == Message.TYPE_FILE || message.getType() == Message.TYPE_IMAGE) {
 			if (message.getStatus() == Message.STATUS_RECEIVED) {
 				return new Pair<>(context.getString(R.string.received_x_file,
@@ -155,10 +187,13 @@ public class UIHelper {
 						UIHelper.getMessageDisplayName(message) + " "), false);
 			} else if (GeoHelper.isGeoUri(message.getBody())) {
 				if (message.getStatus() == Message.STATUS_RECEIVED) {
-					return new Pair<>(context.getString(R.string.received_location),true);
+					return new Pair<>(context.getString(R.string.received_location), true);
 				} else {
 					return new Pair<>(context.getString(R.string.location), true);
 				}
+			} else if (message.treatAsDownloadable() == Message.Decision.MUST) {
+				return new Pair<>(context.getString(R.string.x_file_offered_for_download,
+						getFileDescriptionString(context,message)),true);
 			} else{
 				return new Pair<>(message.getBody().trim(), false);
 			}
@@ -169,16 +204,7 @@ public class UIHelper {
 		if (message.getType() == Message.TYPE_IMAGE) {
 			return context.getString(R.string.image);
 		}
-		final String path = message.getRelativeFilePath();
-		if (path == null) {
-			return "";
-		}
-		final String mime;
-		try {
-			mime = URLConnection.guessContentTypeFromName(path.replace("#",""));
-		} catch (final StringIndexOutOfBoundsException ignored) {
-			return context.getString(R.string.file);
-		}
+		final String mime = message.getMimeType();
 		if (mime == null) {
 			return context.getString(R.string.file);
 		} else if (mime.startsWith("audio/")) {
@@ -200,10 +226,14 @@ public class UIHelper {
 
 	public static String getMessageDisplayName(final Message message) {
 		if (message.getStatus() == Message.STATUS_RECEIVED) {
+			final Contact contact = message.getContact();
 			if (message.getConversation().getMode() == Conversation.MODE_MULTI) {
-				return getDisplayedMucCounterpart(message.getCounterpart());
+				if (contact != null) {
+					return contact.getDisplayName();
+				} else {
+					return getDisplayedMucCounterpart(message.getCounterpart());
+				}
 			} else {
-				final Contact contact = message.getContact();
 				return contact != null ? contact.getDisplayName() : "";
 			}
 		} else {
@@ -224,5 +254,16 @@ public class UIHelper {
 		} else {
 			return counterpart.toString().trim();
 		}
+	}
+
+	public static boolean receivedLocationQuestion(Message message) {
+		if (message == null
+				|| message.getStatus() != Message.STATUS_RECEIVED
+				|| message.getType() != Message.TYPE_TEXT) {
+			return false;
+		}
+		String body = message.getBody() == null ? null : message.getBody().trim().toLowerCase(Locale.getDefault());
+		body = body.replace("?","").replace("¿","");
+		return LOCATION_QUESTIONS.contains(body);
 	}
 }

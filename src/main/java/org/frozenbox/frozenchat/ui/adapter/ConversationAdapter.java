@@ -3,7 +3,6 @@ package org.frozenbox.frozenchat.ui.adapter;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -22,8 +21,8 @@ import java.util.concurrent.RejectedExecutionException;
 
 import org.frozenbox.frozenchat.R;
 import org.frozenbox.frozenchat.entities.Conversation;
-import org.frozenbox.frozenchat.entities.Downloadable;
 import org.frozenbox.frozenchat.entities.Message;
+import org.frozenbox.frozenchat.entities.Transferable;
 import org.frozenbox.frozenchat.ui.ConversationActivity;
 import org.frozenbox.frozenchat.ui.XmppActivity;
 import org.frozenbox.frozenchat.utils.UIHelper;
@@ -46,17 +45,10 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
 		}
 		Conversation conversation = getItem(position);
 		if (this.activity instanceof ConversationActivity) {
-			ConversationActivity activity = (ConversationActivity) this.activity;
-			if (!activity.isConversationsOverviewHideable()) {
-				if (conversation == activity.getSelectedConversation()) {
-					view.setBackgroundColor(activity
-							.getSecondaryBackgroundColor());
-				} else {
-					view.setBackgroundColor(Color.TRANSPARENT);
-				}
-			} else {
-				view.setBackgroundColor(Color.TRANSPARENT);
-			}
+			View swipeableItem = view.findViewById(R.id.swipeable_item);
+			ConversationActivity a = (ConversationActivity) this.activity;
+			int c = a.highlightSelectedConversations() && conversation == a.getSelectedConversation() ? a.getSecondaryBackgroundColor() : a.getPrimaryBackgroundColor();
+			swipeableItem.setBackgroundColor(c);
 		}
 		TextView convName = (TextView) view.findViewById(R.id.conversation_name);
 		if (conversation.getMode() == Conversation.MODE_SINGLE || activity.useSubjectToIdentifyConference()) {
@@ -67,6 +59,7 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
 		TextView mLastMessage = (TextView) view.findViewById(R.id.conversation_lastmsg);
 		TextView mTimestamp = (TextView) view.findViewById(R.id.conversation_lastupdate);
 		ImageView imagePreview = (ImageView) view.findViewById(R.id.conversation_lastimage);
+		ImageView notificationStatus = (ImageView) view.findViewById(R.id.notification_status);
 
 		Message message = conversation.getLatestMessage();
 
@@ -76,9 +69,9 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
 			convName.setTypeface(null, Typeface.NORMAL);
 		}
 
-		if (message.getImageParams().width > 0
-				&& (message.getDownloadable() == null
-				|| message.getDownloadable().getStatus() != Downloadable.STATUS_DELETED)) {
+		if (message.getFileParams().width > 0
+				&& (message.getTransferable() == null
+				|| message.getTransferable().getStatus() != Transferable.STATUS_DELETED)) {
 			mLastMessage.setVisibility(View.GONE);
 			imagePreview.setVisibility(View.VISIBLE);
 			activity.loadBitmap(message, imagePreview);
@@ -100,6 +93,20 @@ public class ConversationAdapter extends ArrayAdapter<Conversation> {
 					mLastMessage.setTypeface(null,Typeface.BOLD);
 				}
 			}
+		}
+
+		long muted_till = conversation.getLongAttribute(Conversation.ATTRIBUTE_MUTED_TILL,0);
+		if (muted_till == Long.MAX_VALUE) {
+			notificationStatus.setVisibility(View.VISIBLE);
+			notificationStatus.setImageResource(R.drawable.ic_notifications_off_grey600_24dp);
+		} else if (muted_till >= System.currentTimeMillis()) {
+			notificationStatus.setVisibility(View.VISIBLE);
+			notificationStatus.setImageResource(R.drawable.ic_notifications_paused_grey600_24dp);
+		} else if (conversation.alwaysNotify()) {
+			notificationStatus.setVisibility(View.GONE);
+		} else {
+			notificationStatus.setVisibility(View.VISIBLE);
+			notificationStatus.setImageResource(R.drawable.ic_notifications_none_grey600_24dp);
 		}
 
 		mTimestamp.setText(UIHelper.readableTimeDifference(activity,conversation.getLatestMessage().getTimeSent()));

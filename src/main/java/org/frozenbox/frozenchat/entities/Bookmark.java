@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import org.frozenbox.frozenchat.Config;
 import org.frozenbox.frozenchat.utils.UIHelper;
 import org.frozenbox.frozenchat.xml.Element;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
@@ -50,10 +51,22 @@ public class Bookmark extends Element implements ListItem {
 		if (this.mJoinedConversation != null
 				&& (this.mJoinedConversation.getMucOptions().getSubject() != null)) {
 			return this.mJoinedConversation.getMucOptions().getSubject();
-		} else if (getName() != null) {
-			return getName();
+		} else if (getBookmarkName() != null) {
+			return getBookmarkName();
 		} else {
 			return this.getJid().getLocalpart();
+		}
+	}
+
+	@Override
+	public String getDisplayJid() {
+		Jid jid = getJid();
+		if (Config.LOCK_DOMAINS_IN_CONVERSATIONS && jid != null && jid.getDomainpart().equals(Config.CONFERENCE_DOMAIN_LOCK)) {
+			return jid.getLocalpart();
+		} else if (jid != null) {
+			return jid.toString();
+		} else {
+			return null;
 		}
 	}
 
@@ -75,12 +88,7 @@ public class Bookmark extends Element implements ListItem {
 	}
 
 	public String getNick() {
-		Element nick = this.findChild("nick");
-		if (nick != null) {
-			return nick.getContent();
-		} else {
-			return null;
-		}
+		return this.findChildContent("nick");
 	}
 
 	public void setNick(String nick) {
@@ -96,12 +104,7 @@ public class Bookmark extends Element implements ListItem {
 	}
 
 	public String getPassword() {
-		Element password = this.findChild("password");
-		if (password != null) {
-			return password.getContent();
-		} else {
-			return null;
-		}
+		return this.findChildContent("password");
 	}
 
 	public void setPassword(String password) {
@@ -144,12 +147,18 @@ public class Bookmark extends Element implements ListItem {
 		this.mJoinedConversation = conversation;
 	}
 
-	public String getName() {
+	public String getBookmarkName() {
 		return this.getAttribute("name");
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	public boolean setBookmarkName(String name) {
+		String before = getBookmarkName();
+		if (name != null && !name.equals(before)) {
+			this.setAttribute("name", name);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	public void unregisterConversation() {

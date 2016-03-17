@@ -8,13 +8,18 @@ import java.net.URL;
 import java.util.Arrays;
 
 import org.frozenbox.frozenchat.Config;
+import org.frozenbox.frozenchat.crypto.axolotl.XmppAxolotlSession;
 import org.frozenbox.frozenchat.utils.GeoHelper;
+import org.frozenbox.frozenchat.utils.MimeUtils;
+import org.frozenbox.frozenchat.utils.UIHelper;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
 public class Message extends AbstractEntity {
 
 	public static final String TABLENAME = "messages";
+
+	public static final String MERGE_SEPARATOR = " \u200B\n\n";
 
 	public static final int STATUS_RECEIVED = 0;
 	public static final int STATUS_UNSEND = 1;
@@ -30,6 +35,7 @@ public class Message extends AbstractEntity {
 	public static final int ENCRYPTION_OTR = 2;
 	public static final int ENCRYPTION_DECRYPTED = 3;
 	public static final int ENCRYPTION_DECRYPTION_FAILED = 4;
+	public static final int ENCRYPTION_AXOLOTL = 5;
 
 	public static final int TYPE_TEXT = 0;
 	public static final int TYPE_IMAGE = 1;
@@ -45,9 +51,14 @@ public class Message extends AbstractEntity {
 	public static final String ENCRYPTION = "encryption";
 	public static final String STATUS = "status";
 	public static final String TYPE = "type";
+	public static final String CARBON = "carbon";
+	public static final String OOB = "oob";
+	public static final String EDITED = "edited";
 	public static final String REMOTE_MSG_ID = "remoteMsgId";
 	public static final String SERVER_MSG_ID = "serverMsgId";
 	public static final String RELATIVE_FILE_PATH = "relativeFilePath";
+	public static final String FINGERPRINT = "axolotl_fingerprint";
+	public static final String READ = "read";
 	public static final String ME_COMMAND = "/me ";
 
 
@@ -61,14 +72,18 @@ public class Message extends AbstractEntity {
 	protected int encryption;
 	protected int status;
 	protected int type;
+	protected boolean carbon = false;
+	protected boolean oob = false;
+	protected String edited = null;
 	protected String relativeFilePath;
 	protected boolean read = true;
 	protected String remoteMsgId = null;
 	protected String serverMsgId = null;
 	protected Conversation conversation = null;
-	protected Downloadable downloadable = null;
+	protected Transferable transferable = null;
 	private Message mNextMessage = null;
 	private Message mPreviousMessage = null;
+	private String axolotlFingerprint = null;
 
 	private Message() {
 
@@ -88,16 +103,23 @@ public class Message extends AbstractEntity {
 				encryption,
 				status,
 				TYPE_TEXT,
+				false,
 				null,
 				null,
-				null);
+				null,
+				null,
+				true,
+				null,
+				false);
 		this.conversation = conversation;
 	}
 
 	private Message(final String uuid, final String conversationUUid, final Jid counterpart,
-			final Jid trueCounterpart, final String body, final long timeSent,
-			final int encryption, final int status, final int type, final String remoteMsgId,
-			final String relativeFilePath, final String serverMsgId) {
+					final Jid trueCounterpart, final String body, final long timeSent,
+					final int encryption, final int status, final int type, final boolean carbon,
+					final String remoteMsgId, final String relativeFilePath,
+					final String serverMsgId, final String fingerprint, final boolean read,
+					final String edited, final boolean oob) {
 		this.uuid = uuid;
 		this.conversationUuid = conversationUUid;
 		this.counterpart = counterpart;
@@ -107,9 +129,14 @@ public class Message extends AbstractEntity {
 		this.encryption = encryption;
 		this.status = status;
 		this.type = type;
+		this.carbon = carbon;
 		this.remoteMsgId = remoteMsgId;
 		this.relativeFilePath = relativeFilePath;
 		this.serverMsgId = serverMsgId;
+		this.axolotlFingerprint = fingerprint;
+		this.read = read;
+		this.edited = edited;
+		this.oob = oob;
 	}
 
 	public static Message fromCursor(Cursor cursor) {
@@ -144,16 +171,29 @@ public class Message extends AbstractEntity {
 				cursor.getInt(cursor.getColumnIndex(ENCRYPTION)),
 				cursor.getInt(cursor.getColumnIndex(STATUS)),
 				cursor.getInt(cursor.getColumnIndex(TYPE)),
+				cursor.getInt(cursor.getColumnIndex(CARBON)) > 0,
 				cursor.getString(cursor.getColumnIndex(REMOTE_MSG_ID)),
 				cursor.getString(cursor.getColumnIndex(RELATIVE_FILE_PATH)),
-				cursor.getString(cursor.getColumnIndex(SERVER_MSG_ID)));
+				cursor.getString(cursor.getColumnIndex(SERVER_MSG_ID)),
+				cursor.getString(cursor.getColumnIndex(FINGERPRINT)),
+				cursor.getInt(cursor.getColumnIndex(READ)) > 0,
+				cursor.getString(cursor.getColumnIndex(EDITED)),
+				cursor.getInt(cursor.getColumnIndex(OOB)) > 0);
 	}
 
 	public static Message createStatusMessage(Conversation conversation, String body) {
-		Message message = new Message();
+		final Message message = new Message();
 		message.setType(Message.TYPE_STATUS);
 		message.setConversation(conversation);
 		message.setBody(body);
+		return message;
+	}
+
+	public static Message createLoadMoreMessage(Conversation conversation) {
+		final Message message = new Message();
+		message.setType(Message.TYPE_STATUS);
+		message.setConversation(conversation);
+		message.setBody("LOAD_MORE");
 		return message;
 	}
 
@@ -177,9 +217,14 @@ public class Message extends AbstractEntity {
 		values.put(ENCRYPTION, encryption);
 		values.put(STATUS, status);
 		values.put(TYPE, type);
+		values.put(CARBON, carbon ? 1 : 0);
 		values.put(REMOTE_MSG_ID, remoteMsgId);
 		values.put(RELATIVE_FILE_PATH, relativeFilePath);
-		values.put(SERVER_MSG_ID,serverMsgId);
+		values.put(SERVER_MSG_ID, serverMsgId);
+		values.put(FINGERPRINT, axolotlFingerprint);
+		values.put(READ,read ? 1 : 0);
+		values.put(EDITED, edited);
+		values.put(OOB, oob ? 1 : 0);
 		return values;
 	}
 
@@ -211,7 +256,7 @@ public class Message extends AbstractEntity {
 				return null;
 			} else {
 				return this.conversation.getAccount().getRoster()
-					.getContactFromRoster(this.trueCounterpart);
+						.getContactFromRoster(this.trueCounterpart);
 			}
 		}
 	}
@@ -300,16 +345,36 @@ public class Message extends AbstractEntity {
 		this.type = type;
 	}
 
+	public boolean isCarbon() {
+		return carbon;
+	}
+
+	public void setCarbon(boolean carbon) {
+		this.carbon = carbon;
+	}
+
+	public void setEdited(String edited) {
+		this.edited = edited;
+	}
+
+	public boolean edited() {
+		return this.edited != null;
+	}
+
 	public void setTrueCounterpart(Jid trueCounterpart) {
 		this.trueCounterpart = trueCounterpart;
 	}
 
-	public Downloadable getDownloadable() {
-		return this.downloadable;
+	public Jid getTrueCounterpart() {
+		return this.trueCounterpart;
 	}
 
-	public void setDownloadable(Downloadable downloadable) {
-		this.downloadable = downloadable;
+	public Transferable getTransferable() {
+		return this.transferable;
+	}
+
+	public void setTransferable(Transferable transferable) {
+		this.transferable = transferable;
 	}
 
 	public boolean equals(Message message) {
@@ -317,15 +382,27 @@ public class Message extends AbstractEntity {
 			return this.serverMsgId.equals(message.getServerMsgId());
 		} else if (this.body == null || this.counterpart == null) {
 			return false;
-		} else if (message.getRemoteMsgId() != null) {
-			return (message.getRemoteMsgId().equals(this.remoteMsgId) || message.getRemoteMsgId().equals(this.uuid))
-					&& this.counterpart.equals(message.getCounterpart())
-					&& this.body.equals(message.getBody());
 		} else {
-			return this.remoteMsgId == null
-					&& this.counterpart.equals(message.getCounterpart())
-					&& this.body.equals(message.getBody())
-					&& Math.abs(this.getTimeSent() - message.getTimeSent()) < Config.PING_TIMEOUT * 500;
+			String body, otherBody;
+			if (this.hasFileOnRemoteHost()) {
+				body = getFileParams().url.toString();
+				otherBody = message.body == null ? null : message.body.trim();
+			} else {
+				body = this.body;
+				otherBody = message.body;
+			}
+			if (message.getRemoteMsgId() != null) {
+				return (message.getRemoteMsgId().equals(this.remoteMsgId) || message.getRemoteMsgId().equals(this.uuid))
+						&& this.counterpart.equals(message.getCounterpart())
+						&& (body.equals(otherBody)
+						||(message.getEncryption() == Message.ENCRYPTION_PGP
+						&&  message.getRemoteMsgId().matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"))) ;
+			} else {
+				return this.remoteMsgId == null
+						&& this.counterpart.equals(message.getCounterpart())
+						&& body.equals(otherBody)
+						&& Math.abs(this.getTimeSent() - message.getTimeSent()) < Config.MESSAGE_MERGE_WINDOW * 1000;
+			}
 		}
 	}
 
@@ -357,45 +434,68 @@ public class Message extends AbstractEntity {
 		}
 	}
 
+	public boolean isLastCorrectableMessage() {
+		Message next = next();
+		while(next != null) {
+			if (next.isCorrectable()) {
+				return false;
+			}
+			next = next.next();
+		}
+		return isCorrectable();
+	}
+
+	private boolean isCorrectable() {
+		return getStatus() != STATUS_RECEIVED && !isCarbon();
+	}
+
 	public boolean mergeable(final Message message) {
 		return message != null &&
-			(message.getType() == Message.TYPE_TEXT &&
-			 this.getDownloadable() == null &&
-			 message.getDownloadable() == null &&
-			 message.getEncryption() != Message.ENCRYPTION_PGP &&
-			 this.getType() == message.getType() &&
-			 //this.getStatus() == message.getStatus() &&
-			 isStatusMergeable(this.getStatus(),message.getStatus()) &&
-			 this.getEncryption() == message.getEncryption() &&
-			 this.getCounterpart() != null &&
-			 this.getCounterpart().equals(message.getCounterpart()) &&
-			 (message.getTimeSent() - this.getTimeSent()) <= (Config.MESSAGE_MERGE_WINDOW * 1000) &&
-			 !GeoHelper.isGeoUri(message.getBody()) &&
-			 !GeoHelper.isGeoUri(this.body) &&
-			 !message.bodyContainsDownloadable() &&
-			 !this.bodyContainsDownloadable() &&
-			 !message.getBody().startsWith(ME_COMMAND) &&
-			 !this.getBody().startsWith(ME_COMMAND)
-			);
+				(message.getType() == Message.TYPE_TEXT &&
+						this.getTransferable() == null &&
+						message.getTransferable() == null &&
+						message.getEncryption() != Message.ENCRYPTION_PGP &&
+						message.getEncryption() != Message.ENCRYPTION_DECRYPTION_FAILED &&
+						this.getType() == message.getType() &&
+						//this.getStatus() == message.getStatus() &&
+						isStatusMergeable(this.getStatus(), message.getStatus()) &&
+						this.getEncryption() == message.getEncryption() &&
+						this.getCounterpart() != null &&
+						this.getCounterpart().equals(message.getCounterpart()) &&
+						this.edited() == message.edited() &&
+						(message.getTimeSent() - this.getTimeSent()) <= (Config.MESSAGE_MERGE_WINDOW * 1000) &&
+						!GeoHelper.isGeoUri(message.getBody()) &&
+						!GeoHelper.isGeoUri(this.body) &&
+						message.treatAsDownloadable() == Decision.NEVER &&
+						this.treatAsDownloadable() == Decision.NEVER &&
+						!message.getBody().startsWith(ME_COMMAND) &&
+						!this.getBody().startsWith(ME_COMMAND) &&
+						!this.bodyIsHeart() &&
+						!message.bodyIsHeart() &&
+						this.isTrusted() == message.isTrusted()
+				);
 	}
 
 	private static boolean isStatusMergeable(int a, int b) {
 		return a == b || (
-				( a == Message.STATUS_SEND_RECEIVED && b == Message.STATUS_UNSEND)
-				|| (a == Message.STATUS_SEND_RECEIVED && b == Message.STATUS_SEND)
-				|| (a == Message.STATUS_UNSEND && b == Message.STATUS_SEND)
-				|| (a == Message.STATUS_UNSEND && b == Message.STATUS_SEND_RECEIVED)
-				|| (a == Message.STATUS_SEND && b == Message.STATUS_UNSEND)
-				|| (a == Message.STATUS_SEND && b == Message.STATUS_SEND_RECEIVED)
+				(a == Message.STATUS_SEND_RECEIVED && b == Message.STATUS_UNSEND)
+						|| (a == Message.STATUS_SEND_RECEIVED && b == Message.STATUS_SEND)
+						|| (a == Message.STATUS_UNSEND && b == Message.STATUS_SEND)
+						|| (a == Message.STATUS_UNSEND && b == Message.STATUS_SEND_RECEIVED)
+						|| (a == Message.STATUS_SEND && b == Message.STATUS_UNSEND)
+						|| (a == Message.STATUS_SEND && b == Message.STATUS_SEND_RECEIVED)
 		);
 	}
 
 	public String getMergedBody() {
-		final Message next = this.next();
-		if (this.mergeable(next)) {
-			return getBody().trim() + '\n' + next.getMergedBody();
+		StringBuilder body = new StringBuilder(this.body.trim());
+		Message current = this;
+		while(current.mergeable(current.next())) {
+			current = current.next();
+			body.append(MERGE_SEPARATOR);
+			body.append(current.getBody().trim());
 		}
-		return getBody().trim();
+		return body.toString();
 	}
 
 	public boolean hasMeCommand() {
@@ -403,20 +503,23 @@ public class Message extends AbstractEntity {
 	}
 
 	public int getMergedStatus() {
-		final Message next = this.next();
-		if (this.mergeable(next)) {
-			return next.getStatus();
+		int status = this.status;
+		Message current = this;
+		while(current.mergeable(current.next())) {
+			current = current.next();
+			status = current.status;
 		}
-		return getStatus();
+		return status;
 	}
 
 	public long getMergedTimeSent() {
-		Message next = this.next();
-		if (this.mergeable(next)) {
-			return next.getMergedTimeSent();
-		} else {
-			return getTimeSent();
+		long time = this.timeSent;
+		Message current = this;
+		while(current.mergeable(current.next())) {
+			current = current.next();
+			time = current.timeSent;
 		}
+		return time;
 	}
 
 	public boolean wasMergedIntoPrevious() {
@@ -429,111 +532,197 @@ public class Message extends AbstractEntity {
 		return (status > STATUS_RECEIVED || (contact != null && contact.trusted()));
 	}
 
-	public boolean bodyContainsDownloadable() {
-		try {
-			URL url = new URL(this.getBody());
-			if (!url.getProtocol().equalsIgnoreCase("http")
-					&& !url.getProtocol().equalsIgnoreCase("https")) {
-				return false;
-					}
-			if (url.getPath() == null) {
-				return false;
-			}
-			String[] pathParts = url.getPath().split("/");
-			String filename;
-			if (pathParts.length > 0) {
-				filename = pathParts[pathParts.length - 1].toLowerCase();
-			} else {
-				return false;
-			}
-			String[] extensionParts = filename.split("\\.");
-			if (extensionParts.length == 2
-					&& Arrays.asList(Downloadable.VALID_IMAGE_EXTENSIONS).contains(
-						extensionParts[extensionParts.length - 1])) {
+	public boolean fixCounterpart() {
+		Presences presences = conversation.getContact().getPresences();
+		if (counterpart != null && presences.has(counterpart.getResourcepart())) {
+			return true;
+		} else if (presences.size() >= 1) {
+			try {
+				counterpart = Jid.fromParts(conversation.getJid().getLocalpart(),
+						conversation.getJid().getDomainpart(),
+						presences.asStringArray()[0]);
 				return true;
-			} else if (extensionParts.length == 3
-					&& Arrays
-					.asList(Downloadable.VALID_CRYPTO_EXTENSIONS)
-					.contains(extensionParts[extensionParts.length - 1])
-					&& Arrays.asList(Downloadable.VALID_IMAGE_EXTENSIONS).contains(
-						extensionParts[extensionParts.length - 2])) {
-				return true;
-			} else {
+			} catch (InvalidJidException e) {
+				counterpart = null;
 				return false;
 			}
-		} catch (MalformedURLException e) {
+		} else {
+			counterpart = null;
 			return false;
 		}
 	}
 
-	public ImageParams getImageParams() {
-		ImageParams params = getLegacyImageParams();
+	public void setUuid(String uuid) {
+		this.uuid = uuid;
+	}
+
+	public String getEditedId() {
+		return edited;
+	}
+
+	public void setOob(boolean isOob) {
+		this.oob = isOob;
+	}
+
+	public enum Decision {
+		MUST,
+		SHOULD,
+		NEVER,
+	}
+
+	private static String extractRelevantExtension(URL url) {
+		String path = url.getPath();
+		return extractRelevantExtension(path);
+	}
+
+	private static String extractRelevantExtension(String path) {
+		if (path == null || path.isEmpty()) {
+			return null;
+		}
+		
+		String filename = path.substring(path.lastIndexOf('/') + 1).toLowerCase();
+		int dotPosition = filename.lastIndexOf(".");
+
+		if (dotPosition != -1) {
+			String extension = filename.substring(dotPosition + 1);
+			// we want the real file extension, not the crypto one
+			if (Transferable.VALID_CRYPTO_EXTENSIONS.contains(extension)) {
+				return extractRelevantExtension(filename.substring(0,dotPosition));
+			} else {
+				return extension;
+			}
+		}
+		return null;
+	}
+
+	public String getMimeType() {
+		if (relativeFilePath != null) {
+			int start = relativeFilePath.lastIndexOf('.') + 1;
+			if (start < relativeFilePath.length()) {
+				return MimeUtils.guessMimeTypeFromExtension(relativeFilePath.substring(start));
+			} else {
+				return null;
+			}
+		} else {
+			try {
+				return MimeUtils.guessMimeTypeFromExtension(extractRelevantExtension(new URL(body.trim())));
+			} catch (MalformedURLException e) {
+				return null;
+			}
+		}
+	}
+
+	public Decision treatAsDownloadable() {
+		if (body.trim().contains(" ")) {
+			return Decision.NEVER;
+		}
+		try {
+			URL url = new URL(body);
+			if (!url.getProtocol().equalsIgnoreCase("http") && !url.getProtocol().equalsIgnoreCase("https")) {
+				return Decision.NEVER;
+			} else if (oob) {
+				return Decision.MUST;
+			}
+			String extension = extractRelevantExtension(url);
+			if (extension == null) {
+				return Decision.NEVER;
+			}
+			String ref = url.getRef();
+			boolean encrypted = ref != null && ref.matches("([A-Fa-f0-9]{2}){48}");
+
+			if (encrypted) {
+				if (MimeUtils.guessMimeTypeFromExtension(extension) != null) {
+					return Decision.MUST;
+				} else {
+					return Decision.NEVER;
+				}
+			} else if (Transferable.VALID_IMAGE_EXTENSIONS.contains(extension)
+					|| Transferable.WELL_KNOWN_EXTENSIONS.contains(extension)) {
+				return Decision.SHOULD;
+			} else {
+				return Decision.NEVER;
+			}
+
+		} catch (MalformedURLException e) {
+			return Decision.NEVER;
+		}
+	}
+
+	public boolean bodyIsHeart() {
+		return body != null && UIHelper.HEARTS.contains(body.trim());
+	}
+
+	public FileParams getFileParams() {
+		FileParams params = getLegacyFileParams();
 		if (params != null) {
 			return params;
 		}
-		params = new ImageParams();
-		if (this.downloadable != null) {
-			params.size = this.downloadable.getFileSize();
+		params = new FileParams();
+		if (this.transferable != null) {
+			params.size = this.transferable.getFileSize();
 		}
 		if (body == null) {
 			return params;
 		}
 		String parts[] = body.split("\\|");
-		if (parts.length == 1) {
-			try {
-				params.size = Long.parseLong(parts[0]);
-			} catch (NumberFormatException e) {
-				params.origin = parts[0];
+		switch (parts.length) {
+			case 1:
+				try {
+					params.size = Long.parseLong(parts[0]);
+				} catch (NumberFormatException e) {
+					try {
+						params.url = new URL(parts[0]);
+					} catch (MalformedURLException e1) {
+						params.url = null;
+					}
+				}
+				break;
+			case 2:
+			case 4:
 				try {
 					params.url = new URL(parts[0]);
 				} catch (MalformedURLException e1) {
 					params.url = null;
 				}
-			}
-		} else if (parts.length == 3) {
-			try {
-				params.size = Long.parseLong(parts[0]);
-			} catch (NumberFormatException e) {
-				params.size = 0;
-			}
-			try {
-				params.width = Integer.parseInt(parts[1]);
-			} catch (NumberFormatException e) {
-				params.width = 0;
-			}
-			try {
-				params.height = Integer.parseInt(parts[2]);
-			} catch (NumberFormatException e) {
-				params.height = 0;
-			}
-		} else if (parts.length == 4) {
-			params.origin = parts[0];
-			try {
-				params.url = new URL(parts[0]);
-			} catch (MalformedURLException e1) {
-				params.url = null;
-			}
-			try {
-				params.size = Long.parseLong(parts[1]);
-			} catch (NumberFormatException e) {
-				params.size = 0;
-			}
-			try {
-				params.width = Integer.parseInt(parts[2]);
-			} catch (NumberFormatException e) {
-				params.width = 0;
-			}
-			try {
-				params.height = Integer.parseInt(parts[3]);
-			} catch (NumberFormatException e) {
-				params.height = 0;
-			}
+				try {
+					params.size = Long.parseLong(parts[1]);
+				} catch (NumberFormatException e) {
+					params.size = 0;
+				}
+				try {
+					params.width = Integer.parseInt(parts[2]);
+				} catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+					params.width = 0;
+				}
+				try {
+					params.height = Integer.parseInt(parts[3]);
+				} catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+					params.height = 0;
+				}
+				break;
+			case 3:
+				try {
+					params.size = Long.parseLong(parts[0]);
+				} catch (NumberFormatException e) {
+					params.size = 0;
+				}
+				try {
+					params.width = Integer.parseInt(parts[1]);
+				} catch (NumberFormatException e) {
+					params.width = 0;
+				}
+				try {
+					params.height = Integer.parseInt(parts[2]);
+				} catch (NumberFormatException e) {
+					params.height = 0;
+				}
+				break;
 		}
 		return params;
 	}
 
-	public ImageParams getLegacyImageParams() {
-		ImageParams params = new ImageParams();
+	public FileParams getLegacyFileParams() {
+		FileParams params = new FileParams();
 		if (body == null) {
 			return params;
 		}
@@ -569,11 +758,69 @@ public class Message extends AbstractEntity {
 		return type == TYPE_FILE || type == TYPE_IMAGE;
 	}
 
-	public class ImageParams {
+	public boolean hasFileOnRemoteHost() {
+		return isFileOrImage() && getFileParams().url != null;
+	}
+
+	public boolean needsUploading() {
+		return isFileOrImage() && getFileParams().url == null;
+	}
+
+	public class FileParams {
 		public URL url;
 		public long size = 0;
 		public int width = 0;
 		public int height = 0;
-		public String origin;
+	}
+
+	public void setAxolotlFingerprint(String fingerprint) {
+		this.axolotlFingerprint = fingerprint;
+	}
+
+	public String getAxolotlFingerprint() {
+		return axolotlFingerprint;
+	}
+
+	public boolean isTrusted() {
+		XmppAxolotlSession.Trust t = conversation.getAccount().getAxolotlService().getFingerprintTrust(axolotlFingerprint);
+		return t != null && t.trusted();
+	}
+
+	private  int getPreviousEncryption() {
+		for (Message iterator = this.prev(); iterator != null; iterator = iterator.prev()){
+			if( iterator.isCarbon() || iterator.getStatus() == STATUS_RECEIVED ) {
+				continue;
+			}
+			return iterator.getEncryption();
+		}
+		return ENCRYPTION_NONE;
+	}
+
+	private int getNextEncryption() {
+		for (Message iterator = this.next(); iterator != null; iterator = iterator.next()){
+			if( iterator.isCarbon() || iterator.getStatus() == STATUS_RECEIVED ) {
+				continue;
+			}
+			return iterator.getEncryption();
+		}
+		return conversation.getNextEncryption();
+	}
+
+	public boolean isValidInSession() {
+		int pastEncryption = getCleanedEncryption(this.getPreviousEncryption());
+		int futureEncryption = getCleanedEncryption(this.getNextEncryption());
+
+		boolean inUnencryptedSession = pastEncryption == ENCRYPTION_NONE
+				|| futureEncryption == ENCRYPTION_NONE
+				|| pastEncryption != futureEncryption;
+
+		return inUnencryptedSession || getCleanedEncryption(this.getEncryption()) == pastEncryption;
+	}
+
+	private static int getCleanedEncryption(int encryption) {
+		if (encryption == ENCRYPTION_DECRYPTED || encryption == ENCRYPTION_DECRYPTION_FAILED) {
+			return ENCRYPTION_PGP;
+		}
+		return encryption;
 	}
 }

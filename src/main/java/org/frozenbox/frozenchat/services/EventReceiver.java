@@ -1,9 +1,10 @@
 package org.frozenbox.frozenchat.services;
 
-import org.frozenbox.frozenchat.persistance.DatabaseBackend;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+
+import org.frozenbox.frozenchat.persistance.DatabaseBackend;
 
 public class EventReceiver extends BroadcastReceiver {
 	@Override

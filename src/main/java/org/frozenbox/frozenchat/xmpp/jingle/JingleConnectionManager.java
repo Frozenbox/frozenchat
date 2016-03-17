@@ -1,21 +1,23 @@
 package org.frozenbox.frozenchat.xmpp.jingle;
 
+import android.annotation.SuppressLint;
+import android.util.Log;
+
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import android.annotation.SuppressLint;
-import android.util.Log;
+
 import org.frozenbox.frozenchat.Config;
 import org.frozenbox.frozenchat.entities.Account;
 import org.frozenbox.frozenchat.entities.Message;
+import org.frozenbox.frozenchat.entities.Transferable;
 import org.frozenbox.frozenchat.services.AbstractConnectionManager;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.utils.Xmlns;
 import org.frozenbox.frozenchat.xml.Element;
 import org.frozenbox.frozenchat.xmpp.OnIqPacketReceived;
-import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 import org.frozenbox.frozenchat.xmpp.jingle.stanzas.JinglePacket;
 import org.frozenbox.frozenchat.xmpp.stanzas.IqPacket;
@@ -58,7 +60,12 @@ public class JingleConnectionManager extends AbstractConnectionManager {
 	}
 
 	public JingleConnection createNewConnection(Message message) {
+		Transferable old = message.getTransferable();
+		if (old != null) {
+			old.cancel();
+		}
 		JingleConnection connection = new JingleConnection(this);
+		mXmppConnectionService.markMessage(message,Message.STATUS_WAITING);
 		connection.init(message);
 		this.connections.add(connection);
 		return connection;
@@ -76,15 +83,15 @@ public class JingleConnectionManager extends AbstractConnectionManager {
 
 	public void getPrimaryCandidate(Account account,
 			final OnPrimaryCandidateFound listener) {
-		if (Config.NO_PROXY_LOOKUP) {
+		if (Config.DISABLE_PROXY_LOOKUP) {
 			listener.onPrimaryCandidateFound(false, null);
 			return;
 		}
 		if (!this.primaryCandidates.containsKey(account.getJid().toBareJid())) {
-			final String proxy = account.getXmppConnection().findDiscoItemByFeature(Xmlns.BYTE_STREAMS);
+			final Jid proxy = account.getXmppConnection().findDiscoItemByFeature(Xmlns.BYTE_STREAMS);
 			if (proxy != null) {
 				IqPacket iq = new IqPacket(IqPacket.TYPE.GET);
-				iq.setAttribute("to", proxy);
+				iq.setTo(proxy);
 				iq.query(Xmlns.BYTE_STREAMS);
 				account.getXmppConnection().sendIqPacket(iq,new OnIqPacketReceived() {
 
@@ -99,11 +106,11 @@ public class JingleConnectionManager extends AbstractConnectionManager {
 								candidate.setHost(host);
 								candidate.setPort(Integer.parseInt(port));
 								candidate.setType(JingleCandidate.TYPE_PROXY);
-								candidate.setJid(Jid.fromString(proxy));
+								candidate.setJid(proxy);
 								candidate.setPriority(655360 + 65535);
 								primaryCandidates.put(account.getJid().toBareJid(),candidate);
 								listener.onPrimaryCandidateFound(true,candidate);
-							} catch (final NumberFormatException | InvalidJidException e) {
+							} catch (final NumberFormatException e) {
 								listener.onPrimaryCandidateFound(false,null);
 								return;
 							}

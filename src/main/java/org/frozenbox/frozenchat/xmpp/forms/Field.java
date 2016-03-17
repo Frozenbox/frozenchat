@@ -1,7 +1,9 @@
 package org.frozenbox.frozenchat.xmpp.forms;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 
 import org.frozenbox.frozenchat.xml.Element;
 
@@ -16,7 +18,7 @@ public class Field extends Element {
 		super("field");
 	}
 
-	public String getName() {
+	public String getFieldName() {
 		return this.getAttribute("var");
 	}
 
@@ -46,5 +48,34 @@ public class Field extends Element {
 		field.setAttributes(element.getAttributes());
 		field.setChildren(element.getChildren());
 		return field;
+	}
+
+	public String getValue() {
+		return findChildContent("value");
+	}
+
+	public List<String> getValues() {
+		List<String> values = new ArrayList<>();
+		for(Element child : getChildren()) {
+			if ("value".equals(child.getName())) {
+				String content = child.getContent();
+				if (content != null) {
+					values.add(content);
+				}
+			}
+		}
+		return values;
+	}
+
+	public String getLabel() {
+		return getAttribute("label");
+	}
+
+	public String getType() {
+		return getAttribute("type");
+	}
+
+	public boolean isRequired() {
+		return hasChild("required");
 	}
 }

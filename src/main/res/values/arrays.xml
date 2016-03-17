@@ -40,4 +40,39 @@
 		<item>-1</item>
 	</integer-array>
 
+	<string-array name="quick_actions">
+		<item>@string/none</item>
+		<item>@string/recently_used</item>
+		<item>@string/attach_take_picture</item>
+		<item>@string/attach_choose_picture</item>
+		<item>@string/attach_record_voice</item>
+		<item>@string/send_location</item>
+	</string-array>
+
+	<string-array name="quick_action_values">
+		<item>none</item>
+		<item>recent</item>
+		<item>photo</item>
+		<item>picture</item>
+		<item>voice</item>
+		<item>location</item>
+	</string-array>
+
+	<string-array name="picture_compression_values">
+		<item>never</item>
+		<item>auto</item>
+		<item>always</item>
+	</string-array>
+
+	<string-array name="picture_compression_entries">
+		<item>@string/never</item>
+		<item>@string/automatically</item>
+		<item>@string/always</item>
+	</string-array>
+
+	<string-array name="mam_prefs">
+		<item>@string/never</item>
+		<item>@string/contacts</item>
+		<item>@string/always</item>
+	</string-array>
 </resources>

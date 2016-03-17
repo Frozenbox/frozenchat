@@ -1,8 +1,11 @@
 package org.frozenbox.frozenchat.xmpp.stanzas;
 
+import android.util.Pair;
+
+import org.frozenbox.frozenchat.parser.AbstractParser;
 import org.frozenbox.frozenchat.xml.Element;
 
-public class MessagePacket extends AbstractStanza {
+public class MessagePacket extends AbstractAcknowledgeableStanza {
 	public static final int TYPE_CHAT = 0;
 	public static final int TYPE_NORMAL = 2;
 	public static final int TYPE_GROUPCHAT = 3;
@@ -14,12 +17,7 @@ public class MessagePacket extends AbstractStanza {
 	}
 
 	public String getBody() {
-		Element body = this.findChild("body");
-		if (body != null) {
-			return body.getContent();
-		} else {
-			return null;
-		}
+		return findChildContent("body");
 	}
 
 	public void setBody(String text) {
@@ -27,6 +25,11 @@ public class MessagePacket extends AbstractStanza {
 		Element body = new Element("body");
 		body.setContent(text);
 		this.children.add(0, body);
+	}
+
+	public void setAxolotlMessage(Element axolotlMessage) {
+		this.children.remove(findChild("body"));
+		this.children.add(0, axolotlMessage);
 	}
 
 	public void setType(int type) {
@@ -65,5 +68,32 @@ public class MessagePacket extends AbstractStanza {
 		} else {
 			return TYPE_NORMAL;
 		}
+	}
+
+	public Pair<MessagePacket,Long> getForwardedMessagePacket(String name, String namespace) {
+		Element wrapper = findChild(name, namespace);
+		if (wrapper == null) {
+			return null;
+		}
+		Element forwarded = wrapper.findChild("forwarded", "urn:xmpp:forward:0");
+		if (forwarded == null) {
+			return null;
+		}
+		MessagePacket packet = create(forwarded.findChild("message"));
+		if (packet == null) {
+			return null;
+		}
+		Long timestamp = AbstractParser.getTimestamp(forwarded,null);
+		return new Pair(packet,timestamp);
+	}
+
+	public static MessagePacket create(Element element) {
+		if (element == null) {
+			return null;
+		}
+		MessagePacket packet = new MessagePacket();
+		packet.setAttributes(element.getAttributes());
+		packet.setChildren(element.getChildren());
+		return packet;
 	}
 }

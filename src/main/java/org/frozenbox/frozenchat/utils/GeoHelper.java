@@ -20,7 +20,7 @@ public class GeoHelper {
 	}
 
 	public static ArrayList<Intent> createGeoIntentsFromMessage(Message message) {
-		final ArrayList<Intent> intents = new ArrayList();
+		final ArrayList<Intent> intents = new ArrayList<>();
 		Matcher matcher = GEO_URI.matcher(message.getBody());
 		if (!matcher.matches()) {
 			return intents;
@@ -54,8 +54,14 @@ public class GeoHelper {
 		Intent locationPluginIntent = new Intent("org.frozenbox.frozenchat.location.show");
 		locationPluginIntent.putExtra("latitude",latitude);
 		locationPluginIntent.putExtra("longitude",longitude);
-		if (conversation.getMode() == Conversation.MODE_SINGLE && message.getStatus() == Message.STATUS_RECEIVED) {
-			locationPluginIntent.putExtra("name",conversation.getName());
+		if (conversation.getMode() == Conversation.MODE_SINGLE) {
+			if (message.getStatus() == Message.STATUS_RECEIVED) {
+				locationPluginIntent.putExtra("name",conversation.getName());
+				locationPluginIntent.putExtra("jid",message.getCounterpart().toString());
+			}
+			else {
+				locationPluginIntent.putExtra("jid",conversation.getAccount().getJid().toString());
+			}
 		}
 		intents.add(locationPluginIntent);
 

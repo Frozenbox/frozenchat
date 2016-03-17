@@ -2,14 +2,15 @@ package org.frozenbox.frozenchat.xmpp.stanzas;
 
 import org.frozenbox.frozenchat.xml.Element;
 
-public class IqPacket extends AbstractStanza {
+public class IqPacket extends AbstractAcknowledgeableStanza {
 
-	public static enum TYPE {
+	public enum TYPE {
 		ERROR,
 		SET,
 		RESULT,
 		GET,
-		INVALID
+		INVALID,
+		TIMEOUT
 	}
 
 	public IqPacket(final TYPE type) {
@@ -39,6 +40,9 @@ public class IqPacket extends AbstractStanza {
 
 	public TYPE getType() {
 		final String type = getAttribute("type");
+		if (type == null) {
+			return TYPE.INVALID;
+		}
 		switch (type) {
 			case "error":
 				return TYPE.ERROR;
@@ -48,6 +52,8 @@ public class IqPacket extends AbstractStanza {
 				return TYPE.SET;
 			case "get":
 				return TYPE.GET;
+			case "timeout":
+				return TYPE.TIMEOUT;
 			default:
 				return TYPE.INVALID;
 		}

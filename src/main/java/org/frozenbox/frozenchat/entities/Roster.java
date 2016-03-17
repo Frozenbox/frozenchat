@@ -2,13 +2,14 @@ package org.frozenbox.frozenchat.entities;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
 public class Roster {
 	final Account account;
-	final HashMap<String, Contact> contacts = new HashMap<>();
+	final HashMap<Jid, Contact> contacts = new HashMap<>();
 	private String version = null;
 
 	public Roster(Account account) {
@@ -20,7 +21,7 @@ public class Roster {
 			return null;
 		}
 		synchronized (this.contacts) {
-			Contact contact = contacts.get(jid.toBareJid().toString());
+			Contact contact = contacts.get(jid.toBareJid());
 			if (contact != null && contact.showInRoster()) {
 				return contact;
 			} else {
@@ -31,15 +32,13 @@ public class Roster {
 
 	public Contact getContact(final Jid jid) {
 		synchronized (this.contacts) {
-			final Jid bareJid = jid.toBareJid();
-			if (contacts.containsKey(bareJid.toString())) {
-				return contacts.get(bareJid.toString());
-			} else {
-				Contact contact = new Contact(bareJid);
+			if (!contacts.containsKey(jid.toBareJid())) {
+				Contact contact = new Contact(jid.toBareJid());
 				contact.setAccount(account);
-				contacts.put(bareJid.toString(), contact);
+				contacts.put(contact.getJid().toBareJid(), contact);
 				return contact;
 			}
+			return contacts.get(jid.toBareJid());
 		}
 	}
 
@@ -55,12 +54,15 @@ public class Roster {
 		}
 	}
 
-	public void clearSystemAccounts() {
-		for (Contact contact : getContacts()) {
-			contact.setPhotoUri(null);
-			contact.setSystemName(null);
-			contact.setSystemAccount(null);
+	public List<Contact> getWithSystemAccounts() {
+		List<Contact> with = getContacts();
+		for(Iterator<Contact> iterator = with.iterator(); iterator.hasNext();) {
+			Contact contact = iterator.next();
+			if (contact.getSystemAccount() == null) {
+				iterator.remove();
+			}
 		}
+		return with;
 	}
 
 	public List<Contact> getContacts() {
@@ -70,10 +72,13 @@ public class Roster {
 	}
 
 	public void initContact(final Contact contact) {
+		if (contact == null) {
+			return;
+		}
 		contact.setAccount(account);
 		contact.setOption(Contact.Options.IN_ROSTER);
 		synchronized (this.contacts) {
-			contacts.put(contact.getJid().toBareJid().toString(), contact);
+			contacts.put(contact.getJid().toBareJid(), contact);
 		}
 	}
 

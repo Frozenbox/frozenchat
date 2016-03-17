@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import org.frozenbox.frozenchat.R;
@@ -51,14 +50,7 @@ public class ChangePasswordActivity extends XmppActivity implements XmppConnecti
 
 	@Override
 	void onBackendConnected() {
-		try {
-			final String jid = getIntent() == null ? null : getIntent().getStringExtra("account");
-			if (jid != null) {
-				this.mAccount = xmppConnectionService.findAccountByJid(Jid.fromString(jid));
-			}
-		} catch (final InvalidJidException ignored) {
-
-		}
+		this.mAccount = extractAccount(getIntent());
 
 	}
 
@@ -102,6 +94,10 @@ public class ChangePasswordActivity extends XmppActivity implements XmppConnecti
 				mChangePasswordButton.setText(R.string.change_password);
 			}
 		});
+
+	}
+
+	public void refreshUiReal() {
 
 	}
 }

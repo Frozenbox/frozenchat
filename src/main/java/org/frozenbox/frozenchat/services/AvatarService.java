@@ -16,6 +16,7 @@ import org.frozenbox.frozenchat.entities.Bookmark;
 import org.frozenbox.frozenchat.entities.Contact;
 import org.frozenbox.frozenchat.entities.Conversation;
 import org.frozenbox.frozenchat.entities.ListItem;
+import org.frozenbox.frozenchat.entities.Message;
 import org.frozenbox.frozenchat.entities.MucOptions;
 import org.frozenbox.frozenchat.utils.UIHelper;
 
@@ -57,6 +58,36 @@ public class AvatarService {
 		return avatar;
 	}
 
+	public Bitmap get(final MucOptions.User user, final int size, boolean cachedOnly) {
+		Contact c = user.getContact();
+		if (c != null && (c.getProfilePhoto() != null || c.getAvatar() != null)) {
+			return get(c, size, cachedOnly);
+		} else {
+			return getImpl(user, size, cachedOnly);
+		}
+	}
+
+	private Bitmap getImpl(final MucOptions.User user, final int size, boolean cachedOnly) {
+		final String KEY = key(user, size);
+		Bitmap avatar = this.mXmppConnectionService.getBitmapCache().get(KEY);
+		if (avatar != null || cachedOnly) {
+			return avatar;
+		}
+		if (user.getAvatar() != null) {
+			avatar = mXmppConnectionService.getFileBackend().getAvatar(user.getAvatar(), size);
+		}
+		if (avatar == null) {
+			Contact contact = user.getContact();
+			if (contact != null) {
+				avatar = get(contact, size, cachedOnly);
+			} else {
+				avatar = get(user.getName(), size, cachedOnly);
+			}
+		}
+		this.mXmppConnectionService.getBitmapCache().put(KEY, avatar);
+		return avatar;
+	}
+
 	public void clear(Contact contact) {
 		synchronized (this.sizes) {
 			for (Integer size : sizes) {
@@ -74,6 +105,16 @@ public class AvatarService {
 		}
 		return PREFIX_CONTACT + "_" + contact.getAccount().getJid().toBareJid() + "_"
 				+ contact.getJid() + "_" + String.valueOf(size);
+	}
+
+	private String key(MucOptions.User user, int size) {
+		synchronized (this.sizes) {
+			if (!this.sizes.contains(size)) {
+				this.sizes.add(size);
+			}
+		}
+		return PREFIX_CONTACT + "_" + user.getAccount().getJid().toBareJid() + "_"
+				+ user.getFullJid() + "_" + String.valueOf(size);
 	}
 
 	public Bitmap get(ListItem item, int size) {
@@ -121,7 +162,7 @@ public class AvatarService {
 		if (bitmap != null || cachedOnly) {
 			return bitmap;
 		}
-		final List<MucOptions.User> users = new ArrayList<>(mucOptions.getUsers());
+		final List<MucOptions.User> users = mucOptions.getUsers();
 		int count = users.size();
 		bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
 		Canvas canvas = new Canvas(bitmap);
@@ -129,11 +170,10 @@ public class AvatarService {
 
 		if (count == 0) {
 			String name = mucOptions.getConversation().getName();
-			final String letter = name.isEmpty() ? "X" : name.substring(0,1);
-			final int color = UIHelper.getColorForName(name);
-			drawTile(canvas, letter, color, 0, 0, size, size);
+			drawTile(canvas, name, 0, 0, size, size);
 		} else if (count == 1) {
-			drawTile(canvas, users.get(0), 0, 0, size, size);
+			drawTile(canvas, users.get(0), 0, 0, size / 2 - 1, size);
+			drawTile(canvas, mucOptions.getConversation().getAccount(), size / 2 + 1, 0, size, size);
 		} else if (count == 2) {
 			drawTile(canvas, users.get(0), 0, 0, size / 2 - 1, size);
 			drawTile(canvas, users.get(1), size / 2 + 1, 0, size, size);
@@ -162,8 +202,7 @@ public class AvatarService {
 	public void clear(MucOptions options) {
 		synchronized (this.sizes) {
 			for (Integer size : sizes) {
-				this.mXmppConnectionService.getBitmapCache().remove(
-						key(options, size));
+				this.mXmppConnectionService.getBitmapCache().remove(key(options, size));
 			}
 		}
 	}
@@ -179,9 +218,13 @@ public class AvatarService {
 	}
 
 	public Bitmap get(Account account, int size) {
+		return get(account, size, false);
+	}
+
+	public Bitmap get(Account account, int size, boolean cachedOnly) {
 		final String KEY = key(account, size);
 		Bitmap avatar = mXmppConnectionService.getBitmapCache().get(KEY);
-		if (avatar != null) {
+		if (avatar != null || cachedOnly) {
 			return avatar;
 		}
 		avatar = mXmppConnectionService.getFileBackend().getAvatar(
@@ -193,11 +236,36 @@ public class AvatarService {
 		return avatar;
 	}
 
+	public Bitmap get(Message message, int size, boolean cachedOnly) {
+		final Conversation conversation = message.getConversation();
+		if (message.getStatus() == Message.STATUS_RECEIVED) {
+			Contact c = message.getContact();
+			if (c != null && (c.getProfilePhoto() != null || c.getAvatar() != null)) {
+				return get(c, size, cachedOnly);
+			} else if (message.getConversation().getMode() == Conversation.MODE_MULTI){
+				MucOptions.User user = conversation.getMucOptions().findUser(message.getCounterpart().getResourcepart());
+				if (user != null) {
+					return getImpl(user,size,cachedOnly);
+				}
+			}
+			return get(UIHelper.getMessageDisplayName(message), size, cachedOnly);
+		} else  {
+			return get(conversation.getAccount(), size, cachedOnly);
+		}
+	}
+
 	public void clear(Account account) {
 		synchronized (this.sizes) {
 			for (Integer size : sizes) {
-				this.mXmppConnectionService.getBitmapCache().remove(
-						key(account, size));
+				this.mXmppConnectionService.getBitmapCache().remove(key(account, size));
+			}
+		}
+	}
+
+	public void clear(MucOptions.User user) {
+		synchronized (this.sizes) {
+			for (Integer size : sizes) {
+				this.mXmppConnectionService.getBitmapCache().remove(key(user, size));
 			}
 		}
 	}
@@ -225,9 +293,7 @@ public class AvatarService {
 		bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
 		Canvas canvas = new Canvas(bitmap);
 		final String trimmedName = name.trim();
-		final String letter = trimmedName.isEmpty() ? "X" : trimmedName.substring(0,1);
-		final int color = UIHelper.getColorForName(name);
-		drawTile(canvas, letter, color, 0, 0, size, size);
+		drawTile(canvas, trimmedName, 0, 0, size, size);
 		mXmppConnectionService.getBitmapCache().put(KEY, bitmap);
 		return bitmap;
 	}
@@ -241,7 +307,7 @@ public class AvatarService {
 		return PREFIX_GENERIC + "_" + name + "_" + String.valueOf(size);
 	}
 
-	private void drawTile(Canvas canvas, String letter, int tileColor,
+	private boolean drawTile(Canvas canvas, String letter, int tileColor,
 						  int left, int top, int right, int bottom) {
 		letter = letter.toUpperCase(Locale.getDefault());
 		Paint tilePaint = new Paint(), textPaint = new Paint();
@@ -258,9 +324,10 @@ public class AvatarService {
 		float width = textPaint.measureText(letter);
 		canvas.drawText(letter, (right + left) / 2 - width / 2, (top + bottom)
 				/ 2 + rect.height() / 2, textPaint);
+		return true;
 	}
 
-	private void drawTile(Canvas canvas, MucOptions.User user, int left,
+	private boolean drawTile(Canvas canvas, MucOptions.User user, int left,
 						  int top, int right, int bottom) {
 		Contact contact = user.getContact();
 		if (contact != null) {
@@ -271,25 +338,59 @@ public class AvatarService {
 				uri = mXmppConnectionService.getFileBackend().getAvatarUri(
 						contact.getAvatar());
 			}
-			if (uri != null) {
-				Bitmap bitmap = mXmppConnectionService.getFileBackend()
-						.cropCenter(uri, bottom - top, right - left);
-				if (bitmap != null) {
-					drawTile(canvas, bitmap, left, top, right, bottom);
-					return;
-				}
+			if (drawTile(canvas, uri, left, top, right, bottom)) {
+				return true;
+			}
+		} else if (user.getAvatar() != null) {
+			Uri uri = mXmppConnectionService.getFileBackend().getAvatarUri(user.getAvatar());
+			if (drawTile(canvas, uri, left, top, right, bottom)) {
+				return true;
 			}
 		}
 		String name = contact != null ? contact.getDisplayName() : user.getName();
-		final String letter = name.isEmpty() ? "X" : name.substring(0,1);
-		final int color = UIHelper.getColorForName(name);
-		drawTile(canvas, letter, color, left, top, right, bottom);
+		drawTile(canvas, name, left, top, right, bottom);
+		return true;
 	}
 
-	private void drawTile(Canvas canvas, Bitmap bm, int dstleft, int dsttop,
+	private boolean drawTile(Canvas canvas, Account account, int left, int top, int right, int bottom) {
+		String avatar = account.getAvatar();
+		if (avatar != null) {
+			Uri uri = mXmppConnectionService.getFileBackend().getAvatarUri(avatar);
+			if (uri != null) {
+				if (drawTile(canvas, uri, left, top, right, bottom)) {
+					return true;
+				}
+			}
+		}
+		return drawTile(canvas, account.getJid().toBareJid().toString(), left, top, right, bottom);
+	}
+
+	private boolean drawTile(Canvas canvas, String name, int left, int top, int right, int bottom) {
+		if (name != null) {
+			final String letter = name.isEmpty() ? "X" : name.substring(0, 1);
+			final int color = UIHelper.getColorForName(name);
+			drawTile(canvas, letter, color, left, top, right, bottom);
+			return true;
+		}
+		return false;
+	}
+
+	private boolean drawTile(Canvas canvas, Uri uri, int left, int top, int right, int bottom) {
+		if (uri != null) {
+			Bitmap bitmap = mXmppConnectionService.getFileBackend()
+					.cropCenter(uri, bottom - top, right - left);
+			if (bitmap != null) {
+				drawTile(canvas, bitmap, left, top, right, bottom);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean drawTile(Canvas canvas, Bitmap bm, int dstleft, int dsttop,
 						  int dstright, int dstbottom) {
 		Rect dst = new Rect(dstleft, dsttop, dstright, dstbottom);
 		canvas.drawBitmap(bm, null, dst, null);
+		return true;
 	}
-
 }

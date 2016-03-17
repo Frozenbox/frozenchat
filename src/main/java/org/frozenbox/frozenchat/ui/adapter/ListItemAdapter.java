@@ -1,15 +1,5 @@
 package org.frozenbox.frozenchat.ui.adapter;
 
-import java.lang.ref.WeakReference;
-import java.util.List;
-import java.util.concurrent.RejectedExecutionException;
-
-import org.frozenbox.frozenchat.R;
-import org.frozenbox.frozenchat.entities.ListItem;
-import org.frozenbox.frozenchat.ui.XmppActivity;
-import org.frozenbox.frozenchat.utils.UIHelper;
-import org.frozenbox.frozenchat.xmpp.jid.Jid;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
@@ -25,6 +15,16 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import java.lang.ref.WeakReference;
+import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
+
+import org.frozenbox.frozenchat.R;
+import org.frozenbox.frozenchat.entities.ListItem;
+import org.frozenbox.frozenchat.ui.XmppActivity;
+import org.frozenbox.frozenchat.utils.UIHelper;
+import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
 public class ListItemAdapter extends ArrayAdapter<ListItem> {
 
@@ -76,11 +76,12 @@ public class ListItemAdapter extends ArrayAdapter<ListItem> {
 				tagLayout.addView(tv);
 			}
 		}
-		final Jid jid = item.getJid();
+		final String jid = item.getDisplayJid();
 		if (jid != null) {
-			tvJid.setText(jid.toString());
+			tvJid.setVisibility(View.VISIBLE);
+			tvJid.setText(jid);
 		} else {
-			tvJid.setText("");
+			tvJid.setVisibility(View.GONE);
 		}
 		tvName.setText(item.getDisplayName());
 		loadAvatar(item,picture);
@@ -92,7 +93,7 @@ public class ListItemAdapter extends ArrayAdapter<ListItem> {
 	}
 
 	public interface OnTagClickedListener {
-		public void onTagClicked(String tag);
+		void onTagClicked(String tag);
 	}
 
 	class BitmapWorkerTask extends AsyncTask<ListItem, Void, Bitmap> {

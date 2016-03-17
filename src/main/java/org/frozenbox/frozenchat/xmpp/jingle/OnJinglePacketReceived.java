@@ -5,5 +5,5 @@ import org.frozenbox.frozenchat.xmpp.PacketReceived;
 import org.frozenbox.frozenchat.xmpp.jingle.stanzas.JinglePacket;
 
 public interface OnJinglePacketReceived extends PacketReceived {
-	public void onJinglePacketReceived(Account account, JinglePacket packet);
+	void onJinglePacketReceived(Account account, JinglePacket packet);
 }

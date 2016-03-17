@@ -11,6 +11,7 @@ import org.frozenbox.frozenchat.entities.Contact;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.xml.Element;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
+import org.frozenbox.frozenchat.xmpp.stanzas.AbstractStanza;
 
 public abstract class AbstractParser {
 
@@ -20,22 +21,23 @@ public abstract class AbstractParser {
 		this.mXmppConnectionService = service;
 	}
 
+	public static Long getTimestamp(Element element, Long defaultValue) {
+		Element delay = element.findChild("delay","urn:xmpp:delay");
+		if (delay != null) {
+			String stamp = delay.getAttribute("stamp");
+			if (stamp != null) {
+				try {
+					return AbstractParser.parseTimestamp(delay.getAttribute("stamp")).getTime();
+				} catch (ParseException e) {
+					return defaultValue;
+				}
+			}
+		}
+		return defaultValue;
+	}
+
 	protected long getTimestamp(Element packet) {
-		long now = System.currentTimeMillis();
-		Element delay = packet.findChild("delay");
-		if (delay == null) {
-			return now;
-		}
-		String stamp = delay.getAttribute("stamp");
-		if (stamp == null) {
-			return now;
-		}
-		try {
-			long time = parseTimestamp(stamp).getTime();
-			return now < time ? now : time;
-		} catch (ParseException e) {
-			return now;
-		}
+		return getTimestamp(packet,System.currentTimeMillis());
 	}
 
 	public static Date parseTimestamp(String timestamp) throws ParseException {
@@ -46,17 +48,13 @@ public abstract class AbstractParser {
 		return dateFormat.parse(timestamp);
 	}
 
-	protected void updateLastseen(final Element packet, final Account account,
-			final boolean presenceOverwrite) {
-		final Jid from = packet.getAttributeAsJid("from");
-		updateLastseen(packet, account, from, presenceOverwrite);
+	protected void updateLastseen(final AbstractStanza packet, final Account account, final boolean presenceOverwrite) {
+		updateLastseen(getTimestamp(packet), account, packet.getFrom(), presenceOverwrite);
 	}
 
-	protected void updateLastseen(final Element packet, final Account account, final Jid from,
-								  final boolean presenceOverwrite) {
+	protected void updateLastseen(long timestamp, final Account account, final Jid from, final boolean presenceOverwrite) {
 		final String presence = from == null || from.isBareJid() ? "" : from.getResourcepart();
 		final Contact contact = account.getRoster().getContact(from);
-		final long timestamp = getTimestamp(packet);
 		if (timestamp >= contact.lastseen.time) {
 			contact.lastseen.time = timestamp;
 			if (!presence.isEmpty() && presenceOverwrite) {
@@ -70,10 +68,6 @@ public abstract class AbstractParser {
 		if (item == null) {
 			return null;
 		}
-		Element data = item.findChild("data", "urn:xmpp:avatar:data");
-		if (data == null) {
-			return null;
-		}
-		return data.getContent();
+		return item.findChildContent("data", "urn:xmpp:avatar:data");
 	}
 }

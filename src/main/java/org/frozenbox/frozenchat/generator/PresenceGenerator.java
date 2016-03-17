@@ -2,6 +2,7 @@ package org.frozenbox.frozenchat.generator;
 
 import org.frozenbox.frozenchat.entities.Account;
 import org.frozenbox.frozenchat.entities.Contact;
+import org.frozenbox.frozenchat.entities.Presence;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.xml.Element;
 import org.frozenbox.frozenchat.xmpp.stanzas.PresencePacket;
@@ -36,12 +37,14 @@ public class PresenceGenerator extends AbstractGenerator {
 		return subscription("subscribed", contact);
 	}
 
-	public PresencePacket sendPresence(Account account) {
+	public PresencePacket selfPresence(Account account, Presence.Status status) {
 		PresencePacket packet = new PresencePacket();
+		if(status.toShowString() != null) {
+			packet.addChild("show").setContent(status.toShowString());
+		}
 		packet.setFrom(account.getJid());
 		String sig = account.getPgpSignature();
 		if (sig != null) {
-			packet.addChild("status").setContent("online");
 			packet.addChild("x", "jabber:x:signed").setContent(sig);
 		}
 		String capHash = getCapHash();
@@ -49,7 +52,7 @@ public class PresenceGenerator extends AbstractGenerator {
 			Element cap = packet.addChild("c",
 					"http://jabber.org/protocol/caps");
 			cap.setAttribute("hash", "sha-1");
-			cap.setAttribute("node", "http://conversions.im");
+			cap.setAttribute("node", "http://chat.frozenbox.org");
 			cap.setAttribute("ver", capHash);
 		}
 		return packet;

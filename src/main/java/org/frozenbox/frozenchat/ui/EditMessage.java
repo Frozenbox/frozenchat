@@ -32,21 +32,32 @@ public class EditMessage extends EditText {
 
 	private boolean isUserTyping = false;
 
+	private boolean lastInputWasTab = false;
+
 	protected KeyboardListener keyboardListener;
 
 	@Override
-	public boolean onKeyDown(int keyCode, KeyEvent event) {
-		if (keyCode == KeyEvent.KEYCODE_ENTER) {
+	public boolean onKeyDown(int keyCode, KeyEvent e) {
+		if (keyCode == KeyEvent.KEYCODE_ENTER && !e.isShiftPressed()) {
+			lastInputWasTab = false;
 			if (keyboardListener != null && keyboardListener.onEnterPressed()) {
 				return true;
 			}
+		} else if (keyCode == KeyEvent.KEYCODE_TAB && !e.isAltPressed() && !e.isCtrlPressed()) {
+			if (keyboardListener != null && keyboardListener.onTabPressed(this.lastInputWasTab)) {
+				lastInputWasTab = true;
+				return true;
+			}
+		} else {
+			lastInputWasTab = false;
 		}
-		return super.onKeyDown(keyCode, event);
+		return super.onKeyDown(keyCode, e);
 	}
 
 	@Override
 	public void onTextChanged(CharSequence text, int start, int lengthBefore, int lengthAfter) {
 		super.onTextChanged(text,start,lengthBefore,lengthAfter);
+		lastInputWasTab = false;
 		if (this.mTypingHandler != null && this.keyboardListener != null) {
 			this.mTypingHandler.removeCallbacks(mTypingTimeout);
 			this.mTypingHandler.postDelayed(mTypingTimeout, Config.TYPING_TIMEOUT * 1000);
@@ -58,6 +69,7 @@ public class EditMessage extends EditText {
 				this.isUserTyping = false;
 				this.keyboardListener.onTextDeleted();
 			}
+			this.keyboardListener.onTextChanged();
 		}
 	}
 
@@ -69,10 +81,12 @@ public class EditMessage extends EditText {
 	}
 
 	public interface KeyboardListener {
-		public boolean onEnterPressed();
-		public void onTypingStarted();
-		public void onTypingStopped();
-		public void onTextDeleted();
+		boolean onEnterPressed();
+		void onTypingStarted();
+		void onTypingStopped();
+		void onTextDeleted();
+		void onTextChanged();
+		boolean onTabPressed(boolean repeated);
 	}
 
 }

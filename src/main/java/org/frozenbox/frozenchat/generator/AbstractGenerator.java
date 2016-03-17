@@ -12,8 +12,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import org.frozenbox.frozenchat.crypto.axolotl.AxolotlService;
 import org.frozenbox.frozenchat.services.XmppConnectionService;
 import org.frozenbox.frozenchat.utils.PhoneHelper;
+import org.frozenbox.frozenchat.xmpp.jid.Jid;
+import org.frozenbox.frozenchat.xmpp.stanzas.IqPacket;
 
 public abstract class AbstractGenerator {
 	private final String[] FEATURES = {
@@ -26,16 +29,21 @@ public abstract class AbstractGenerator {
 			"http://jabber.org/protocol/caps",
 			"http://jabber.org/protocol/disco#info",
 			"urn:xmpp:avatar:metadata+notify",
+			"http://jabber.org/protocol/nick+notify",
 			"urn:xmpp:ping",
 			"jabber:iq:version",
-			"http://jabber.org/protocol/chatstates"};
+			"http://jabber.org/protocol/chatstates",
+			AxolotlService.PEP_DEVICE_LIST+"+notify"};
 	private final String[] MESSAGE_CONFIRMATION_FEATURES = {
 			"urn:xmpp:chat-markers:0",
 			"urn:xmpp:receipts"
 	};
+	private final String[] MESSAGE_CORRECTION_FEATURES = {
+			"urn:xmpp:message-correct:0"
+	};
 	private String mVersion = null;
-	public final String IDENTITY_NAME = "Conversations";
-	public final String IDENTITY_TYPE = "phone";
+	protected final String IDENTITY_NAME = "FrozenChat";
+	protected final String IDENTITY_TYPE = "phone";
 
 	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
 
@@ -52,7 +60,7 @@ public abstract class AbstractGenerator {
 		return this.mVersion;
 	}
 
-	protected String getIdentityName() {
+	public String getIdentityName() {
 		return IDENTITY_NAME + " " + getIdentityVersion();
 	}
 
@@ -83,6 +91,9 @@ public abstract class AbstractGenerator {
 		features.addAll(Arrays.asList(FEATURES));
 		if (mXmppConnectionService.confirmMessages()) {
 			features.addAll(Arrays.asList(MESSAGE_CONFIRMATION_FEATURES));
+		}
+		if (mXmppConnectionService.allowMessageCorrection()) {
+			features.addAll(Arrays.asList(MESSAGE_CORRECTION_FEATURES));
 		}
 		Collections.sort(features);
 		return features;
