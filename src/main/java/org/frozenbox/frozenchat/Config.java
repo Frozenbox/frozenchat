@@ -36,6 +36,8 @@ public final class Config {
 
 	public static final String LOGTAG = "conversations";
 
+	public static final String BUG_REPORT="bugs@lab.gdy.club";
+
 
 	public static final String DOMAIN_LOCK = "lab.gdy.club"; //only allow account creation for this domain
 	public static final String CONFERENCE_DOMAIN_LOCK = "lab.gdy.club"; //only allow conference creation for this domain
