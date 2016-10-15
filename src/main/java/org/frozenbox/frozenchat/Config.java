@@ -42,7 +42,7 @@ public final class Config {
 	public static final boolean LOCK_DOMAINS_IN_CONVERSATIONS = true; //only add contacts and conferences for own domains
 
 	public static final boolean LOCK_SETTINGS = false; //set to true to disallow account and settings editing
-	public static final boolean DISALLOW_REGISTRATION_IN_UI = false; //hide the register checkbox
+	public static final boolean DISALLOW_REGISTRATION_IN_UI = true; //hide the register checkbox
 
 	public static final boolean ALLOW_NON_TLS_CONNECTIONS = false; //very dangerous. you should have a good reason to set this to true
 	public static final boolean FORCE_ORBOT = false; // always use TOR
