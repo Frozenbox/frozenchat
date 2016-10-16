@@ -527,7 +527,7 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 		}
 		SharedPreferences preferences = getPreferences();
 		boolean useTor = Config.FORCE_ORBOT || preferences.getBoolean("use_tor", false);
-		this.mShowOptions = useTor || preferences.getBoolean("show_connection_options", false);
+		//this.mShowOptions = useTor || preferences.getBoolean("show_connection_options", false);
 		mHostname.setHint(useTor ? R.string.hostname_or_onion : R.string.hostname_example);
 		this.mNamePort.setVisibility(mShowOptions ? View.VISIBLE : View.GONE);
 	}
@@ -577,12 +577,12 @@ public class EditAccountActivity extends XmppActivity implements OnAccountUpdate
 				item.setChecked(!item.isChecked());
 				break;
 			case R.id.action_change_password_on_server:
-                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("http://academics.gndec.ac.in/"));
+                Intent changePasswordIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://academics.gndec.ac.in/"));
 				/*
 				final Intent changePasswordIntent = new Intent(this, ChangePasswordActivity.class);
-				changePasswordIntent.putExtra(EXTRA_ACCOUNT, mAccount.getJid().toString());
+				changePasswordIntent.putExtra(EXTRA_ACCOUNT, mAccount.getJid().toString());*/
 				startActivity(changePasswordIntent);
-				break;*/
+				break;
 			case R.id.action_mam_prefs:
 				editMamPrefs();
 				break;
