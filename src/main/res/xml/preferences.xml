@@ -124,6 +124,20 @@
             android:summary="@string/pref_show_dynamic_tags_summary"
             android:title="@string/pref_show_dynamic_tags"/>
     </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_input_options">
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="enter_is_send"
+            android:summary="@string/pref_enter_is_send_summary"
+            android:title="@string/pref_enter_is_send"/>
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="display_enter_key"
+            android:summary="@string/pref_display_enter_key_summary"
+            android:title="@string/pref_display_enter_key"/>
+    </PreferenceCategory>
+
     <PreferenceCategory
         android:key="advanced"
         android:title="@string/pref_advanced_options">
@@ -137,11 +151,12 @@
                     android:key="dont_save_encrypted"
                     android:summary="@string/pref_dont_save_encrypted_summary"
                     android:title="@string/pref_dont_save_encrypted"/>
-                <CheckBoxPreference
+                <!--<CheckBoxPreference
                     android:defaultValue="false"
                     android:key="dont_trust_system_cas"
                     android:summary="@string/pref_dont_trust_system_cas_summary"
                     android:title="@string/pref_dont_trust_system_cas_title"/>
+                -->
                 <Preference
                     android:key="remove_trusted_certificates"
                     android:summary="@string/pref_remove_trusted_certificates_summary"
@@ -152,6 +167,7 @@
                     android:title="@string/pref_allow_message_correction"
                     android:summary="@string/pref_allow_message_correction_summary"/>
             </PreferenceCategory>
+            <!--
             <PreferenceCategory
                 android:key="connection_options"
                 android:title="@string/pref_connection_options">
@@ -166,18 +182,7 @@
                     android:summary="@string/pref_show_connection_options_summary"
                     android:title="@string/pref_show_connection_options"/>
             </PreferenceCategory>
-            <PreferenceCategory android:title="@string/pref_input_options">
-                <CheckBoxPreference
-                    android:defaultValue="false"
-                    android:key="enter_is_send"
-                    android:summary="@string/pref_enter_is_send_summary"
-                    android:title="@string/pref_enter_is_send"/>
-                <CheckBoxPreference
-                    android:defaultValue="true"
-                    android:key="display_enter_key"
-                    android:summary="@string/pref_display_enter_key_summary"
-                    android:title="@string/pref_display_enter_key"/>
-            </PreferenceCategory>
+            -->
             <PreferenceCategory android:title="@string/pref_presence_settings">
                 <CheckBoxPreference
                     android:defaultValue="true"

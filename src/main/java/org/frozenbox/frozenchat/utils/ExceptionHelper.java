@@ -28,6 +28,8 @@ import org.frozenbox.frozenchat.ui.ConversationActivity;
 import org.frozenbox.frozenchat.xmpp.jid.InvalidJidException;
 import org.frozenbox.frozenchat.xmpp.jid.Jid;
 
+import static org.frozenbox.frozenchat.Config.BUG_REPORT;
+
 public class ExceptionHelper {
 	public static void init(Context context) {
 		if (!(Thread.getDefaultUncaughtExceptionHandler() instanceof ExceptionHandler)) {
@@ -95,7 +97,7 @@ public class ExceptionHelper {
 							Conversation conversation = null;
 							try {
 								conversation = service.findOrCreateConversation(finalAccount,
-										Jid.fromString("bugs@siacs.eu"), false);
+										Jid.fromString(BUG_REPORT), false);
 							} catch (final InvalidJidException ignored) {
 							}
 							Message message = new Message(conversation, report
